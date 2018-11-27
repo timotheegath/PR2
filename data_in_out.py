@@ -88,6 +88,20 @@ def get_image(filename=None, index=None, phase='training', labels=None, return_i
         return images, g_t, cam_id
 
 
+#   Get the index of the images/features to be used for training
+def get_training_indexes():
+    train_idxs = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['train_idx'])[
+        'train_idx'].flatten()
+
+    return train_idxs
+
+#   Get the index of the images/features for testing
+def get_query_indexes():
+    query_idxs = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])[
+        'query_idx'].flatten()
+
+    return query_idxs
+
 
 
 
