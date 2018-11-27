@@ -17,7 +17,7 @@ def load_features():
 #   Or by label (returns all images of same label). The function returns the images, their ground_truth and their cam_id
 #   The arguments can be single integers or a list. If opening by filename, specify if the image is part of query or
 #   training. If images are not needed, return_im=False (saves time)
-def get_image(filename=None, index=None, phase='training', labels=None, return_im=True):
+def get_im_info(filename=None, index=None, phase='training', labels=None, return_im=True):
     chosen_way = 0
     all_g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['labels'])['labels'].flatten()
     filenames = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['filelist'])['filelist'].flatten()
@@ -95,12 +95,15 @@ def get_training_indexes():
 
     return train_idxs
 
+
 #   Get the index of the images/features for testing
 def get_query_indexes():
     query_idxs = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])[
         'query_idx'].flatten()
 
     return query_idxs
+
+
 
 
 
