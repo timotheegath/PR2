@@ -22,3 +22,5 @@ def KNN_classifier(features, labels, gallery_indices, query_indices):
     features_query = features[query_indices]
     return classifier.kneighbors(features_query, return_distance=True)
 
+query = io.get_query_indexes()
+print(query.shape)
