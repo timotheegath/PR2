@@ -1,6 +1,25 @@
 # Big files
 PR_data
 
+#LateX
+## Core latex/pdflatex auxiliary files:
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+*.bbl
+*.gz
+*.blg
+*.bbl
+
 #PyCharm
 
 *.idea/

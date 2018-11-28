@@ -179,11 +179,6 @@ def get_ground_truth(indexes):
 
 
 
-ix = get_validation_indexes()
-print(ix)
-
-
-
 
 
 
