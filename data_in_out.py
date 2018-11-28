@@ -60,7 +60,7 @@ def get_im_info(filename=None, index=None, phase='training', labels=None, how_ma
                 images.append(cv2.imread(os.path.join('PR_data/images_cuhk03/', filename)))
             g_t.append(all_g_t[idx])
             cam_id.append(cam_ids[idx])
-        return images, g_t, cam_id
+        return images, g_t, cam_id, []
     elif chosen_way is 2:
         images = []
         cam_id = []
@@ -172,11 +172,28 @@ def get_query_indexes():
     return query_idxs, g_t
 
 
+def get_gallery_indexes():
+    gal_idxs, g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['gallery_idx'])[
+        'gallery_idx'].flatten()
+
+    return gal_idxs, g_t
+
+
 def get_ground_truth(indexes):
 
     all_g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['labels'])['labels'].flatten()
     return all_g_t[indexes]
 
+
+def find_positives(ranked_results, gallery_indexes, query_indexes):
+    # indexes have to be indexes for the whole dataset, not the specific partition
+    g_images, g_g_t, g_cam_id, _ = get_im_info(index=gallery_indexes)
+    q_images, q_g_t, q_cam_id, _ = get_im_info(index=query_indexes)
+    true_ranked_results = gallery_indexes[ranked_results]
+    labelled_ranked_results = g_g_t[true_ranked_results]
+    positive = labelled_ranked_results == q_g_t[:, None]
+    
+    return positive
 
 
 
