@@ -10,7 +10,7 @@ def load_features():
     with open('PR_data/feature_data.json', 'r') as f:
         features = json.load(f)
 
-    return features
+    return np.array(features)
 
 
 #   Function to easily interact with our image bank. Choose one out of three ways to get image(s): by filename, by index 
