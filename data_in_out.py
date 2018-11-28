@@ -195,12 +195,3 @@ def find_positives(ranked_results, gallery_indexes, query_indexes):
 
     return positive
 
-
-
-
-
-
-
-
-
-
