@@ -159,17 +159,17 @@ def get_training_indexes():
 
 def get_validation_indexes(number=100):
 
-    _, _, _, ix = get_im_info(phase='validation', return_im=False)
-    return np.array(ix).flatten()
+    _, g_t, _, ix = get_im_info(phase='validation', return_im=False)
+    return np.array(ix).flatten(), g_t
 
 
 
 #   Get the index of the images/features for testing
 def get_query_indexes():
-    query_idxs = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])[
+    query_idxs, g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])[
         'query_idx'].flatten()
 
-    return query_idxs
+    return query_idxs, g_t
 
 
 def get_ground_truth(indexes):
