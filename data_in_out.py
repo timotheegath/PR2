@@ -178,10 +178,17 @@ def get_gallery_indexes():
     return gal_idxs
 
 
-def get_ground_truth(indexes):
+def get_cam_ids():
+    cam_ids= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['camId'])[
+        'camId'].flatten()
+
+    return cam_ids
+
+
+def get_ground_truth():
 
     all_g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['labels'])['labels'].flatten()
-    return all_g_t[indexes]
+    return all_g_t
 
 
 def interpret_rank(ranked_results, gallery_indexes, query_indexes):
