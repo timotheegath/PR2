@@ -193,5 +193,6 @@ def interpret_rank(ranked_results, gallery_indexes, query_indexes):
     labelled_ranked_results = g_g_t[ranked_results]
     positive = labelled_ranked_results == q_g_t[:, None]
 
+
     return positive
 
