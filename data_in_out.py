@@ -166,17 +166,16 @@ def get_validation_indexes(number=100):
 
 #   Get the index of the images/features for testing
 def get_query_indexes():
-    query_idxs, g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])[
-        'query_idx'].flatten()
+    query_idxs= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])['query_idx'].flatten()
 
-    return query_idxs, g_t
+    return query_idxs
 
 
 def get_gallery_indexes():
-    gal_idxs, g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['gallery_idx'])[
+    gal_idxs= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['gallery_idx'])[
         'gallery_idx'].flatten()
 
-    return gal_idxs, g_t
+    return gal_idxs
 
 
 def get_ground_truth(indexes):
