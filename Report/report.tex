@@ -12,7 +12,7 @@
 \maketitle
 
 \section{Problem formulation}
-The features $X \in \mathbb{R}^{D X N}$ are readily available, and consist of a set of samples $x_i \in \mathbb{R}^D, i = 1, 2, ..., N$ corresponding to $N$ pictures of pedestrians. Each sample is assigned a ground-truth label $l(x_i) \in \mathbb{N}$ identifying the individual on the picture. The features are divided in a training subset $T$, a query subset $Q$ and a gallery subset $G$. Our goal is to minimise the retrieval error when performing retrieval experiments with the K-Nearest Neighbour algorithm \cite{Cover1967} at different ranks ($R = 1, 2, ..., 10 $), with different distance metrics. For a distance metric $d(x_i, x_j)$, a nearest neighbour of $x_i \in Q$ is defined as
+The features $X \in \mathbb{R}^{D X N}$ are readily available, and consist of a set of samples $x_i \in \mathbb{R}^D, i = 1, 2, ..., N$ corresponding to $N$ pictures of pedestrians. Each sample is assigned a ground-truth label $l(x_i) \in \mathbb{N}$ identifying the individual on the picture. The features are divided in a training subset $T$, a query subset $Q$ and a gallery subset $G$. Our goal is to minimise the retrieval error when performing retrieval experiments with the K-Nearest Neighbour algorithm \cite{Cover1967} at different ranks ($R = 1, 2, ..., 10 $), with different distance metrics. For a distance metric $d(x_i, x_j)$, a nearest neighbour $x_j$ of $x_i \in Q$ is defined as
 \begin{equation}
 n_k(x_i) = \min_{x_j \in G}  d(x_i, x_j), k = 1
 \end{equation}
@@ -21,7 +21,7 @@ We can formulate our problem as a Distance Metric Learning problem. The retrieva
 \begin{equation}
 e = \frac{1}{N_Q R}\sum^{N_Q}_{i} negatives(n_R(x_i), l(x_i)) 
 \end{equation}
-Where $negative$ is the function that returns the number of neighbours $x_j$ for which $l(x_i) \neq l(x_j)$
+Where $negative$ is the function that returns the number of neighbours $x_j$ to $x_i$ for which $l(x_i) \neq l(x_j)$
 
 
 
