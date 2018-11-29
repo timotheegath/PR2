@@ -11,30 +11,34 @@ else:
     Tensor = torch.FloatTensor
 
 def minkowski_metric(x, y, p):
-    x = torch.from_numpy(x).unsqueeze(dim=1).type(Tensor)
-    y = torch.from_numpy(y).type(Tensor)
 
-    p = torch.from_numpy(np.array(p)).type(Tensor)
-
-    distances = - (y - x)
+    x = x.unsqueeze(dim=1)
+    
+    distances = (y - x)
     distances = torch.pow(distances, p)
     distances = torch.sum(distances, dim=0)
     # distances = (distances ** 1/p)
 
-    return distances.cpu().numpy()
+    return distances
 
 
 def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
 
-    features_classify = features[:, gallery_indices]
-    features_query = features[:, query_indices]
-    query_distances = np.zeros((query_indices.shape[0], gallery_indices.shape[0]))
+    features_classify = torch.from_numpy(features[:, gallery_indices]).type(Tensor)
+    features_query = torch.from_numpy(features[:, query_indices]).type(Tensor)
+    query_distances = torch.zeros((query_indices.shape[0], gallery_indices.shape[0])).type(Tensor)
+    gallery_mask = torch.from_numpy(1 - gallery_mask.astype(np.uint8))
+    if torch.cuda.is_available():
+        gallery_mask = gallery_mask.cuda()
+
 
     for i in range(query_indices.shape[0]):
-        print('HERE: ', i)
-        gallery_mask_temp = np.repeat(gallery_mask[i, None], features.shape[0], axis=0)
-        query_distances[i, :] = minkowski_metric(features_query[:, i], np.ma.masked_where(gallery_mask_temp, features_classify), 2)
-    query_distances = np.ma.masked_where(gallery_mask, query_distances)
+        print(i)
+        # gallery_mask_temp = np.repeat(gallery_mask[i, None], features.shape[0], axis=0)
+        out_d = minkowski_metric(features_query[:, i],
+                         torch.index_select(features_classify, 1, gallery_mask[i].nonzero()[:, 0]).type(Tensor), 2)
+        query_distances[i, gallery_mask[i].nonzero()[:, 0]] = out_d
+    query_distances = np.ma.masked_where(gallery_mask.cpu().numpy(), query_distances.cpu().numpy())
 
     return query_distances
 
@@ -66,4 +70,4 @@ if __name__ == '__main__':
 
     gallery_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)
     distances_query = KNN_classifier(features, gallery_indices, query_indices, gallery_mask)
-    print(distances_query.shape)
+    # print(distances_query)
