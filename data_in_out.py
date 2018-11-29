@@ -5,6 +5,7 @@ import cv2
 import os.path
 
 NUMBER_PEOPLE = 1360
+IMAGE_SIZE = (293, 100)
 def load_features():
 
     with open('PR_data/feature_data.json', 'r') as f:
@@ -19,6 +20,8 @@ def load_features():
 #   training. If images are not needed, return_im=False (saves time). how_many will be used when needing to get e.g 7
 #   images per label. If all are wanted, leave to None
 def get_im_info(filename=None, index=None, phase='training', labels=None, how_many=None, return_im=True):
+    global IMAGE_SIZE
+    IMAGE_SIZE_inv = (IMAGE_SIZE[1], IMAGE_SIZE[0])
     chosen_way = 0
     all_g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['labels'])['labels'].flatten()
     filenames = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['filelist'])['filelist'].flatten()
@@ -71,10 +74,12 @@ def get_im_info(filename=None, index=None, phase='training', labels=None, how_ma
             cam_id.append(cam_ids[i])
             filename = np.array2string(filenames[i])[2:-2]
             if return_im:
-                images.append(cv2.imread('PR_data/images_cuhk03/' + filename))
-            g_t.append(all_g_t[index])
+                im = cv2.imread('PR_data/images_cuhk03/' + filename)
+                im = cv2.resize(im, dsize=IMAGE_SIZE_inv, interpolation=cv2.INTER_LINEAR)
+                images.append(im)
+            g_t.append(all_g_t[i])
 
-        return images, g_t, cam_id
+        return images, g_t, cam_id, []
     elif chosen_way is 3:
         # These lists store all examples of all labels
         images = []
@@ -103,7 +108,9 @@ def get_im_info(filename=None, index=None, phase='training', labels=None, how_ma
                 this_cam_id.append(cam_ids[i])
                 filename = np.array2string(filenames[i])[2:-2]
                 if return_im:
-                    this_image.append(cv2.imread('PR_data/images_cuhk03/' + filename))
+                    im = cv2.imread('PR_data/images_cuhk03/' + filename)
+                    im = cv2.resize(im, dsize=IMAGE_SIZE_inv, interpolation=cv2.INTER_LINEAR)
+                    this_image.append(im)
                 this_g_t.append(l)
             images.append(this_image)
             g_t.append(this_g_t)
@@ -201,4 +208,59 @@ def interpret_rank(ranked_results, gallery_indexes, query_indexes):
 
 
     return positive
+
+
+def loading_bar(current, max):
+
+    if current/max*100 % 10 == 0:
+        print('Completion', int(current/max*100), '%')
+
+
+
+def display_ranklist(query_indexes, winner_indexes, rank, N):
+    EDGE_THICKNESS = 20
+    RED = (0, 0, 255)
+    GREEN = (0, 255, 0)
+    GRAY = (20, 20, 20)
+
+    display = np.zeros(((IMAGE_SIZE[0]+2*EDGE_THICKNESS)*N, (IMAGE_SIZE[1]+2*EDGE_THICKNESS)*(rank+1), 3), dtype=np.uint8)
+
+    choice = np.arange(0, query_indexes.shape[0])
+    np.random.shuffle(choice)
+    choice = choice[:N]
+    chosen_query_ix = query_indexes[choice]
+    chosen_winner_ix = winner_indexes[choice, :]
+    query_images, q_g_t, _ , _ = get_im_info(index=chosen_query_ix.tolist())
+
+    for n in range(N):
+        low_i = (EDGE_THICKNESS * 2 + IMAGE_SIZE[0]) * n
+        high_i = (EDGE_THICKNESS * 2 + IMAGE_SIZE[0]) * (n + 1)
+        low_j = 0
+        high_j = (EDGE_THICKNESS * 2 + IMAGE_SIZE[1])
+
+        winner_images, w_g_t, _, _ = get_im_info(index=chosen_winner_ix[n].tolist())
+
+        positives = (np.array(w_g_t) == np.array(q_g_t[n]))
+
+        display[low_i:high_i, low_j:high_j] = np.pad(query_images[n], pad_width=((EDGE_THICKNESS, EDGE_THICKNESS), (EDGE_THICKNESS, EDGE_THICKNESS), (0,0)),
+                               mode='constant', constant_values=((GRAY, GRAY), (GRAY, GRAY), (0, 0)))
+
+
+        for i, im in enumerate(winner_images):
+
+            low_j = (EDGE_THICKNESS * 2 + IMAGE_SIZE[1]) * (i + 1)
+            high_j = (EDGE_THICKNESS * 2 + IMAGE_SIZE[1]) * (i + 2)
+            if positives[i]:
+
+                block = np.pad(im, pad_width=((EDGE_THICKNESS, EDGE_THICKNESS), (EDGE_THICKNESS, EDGE_THICKNESS), (0,0)),
+                               mode='constant', constant_values=((GREEN, GREEN), (GREEN, GREEN), (0, 0)))
+
+            else:
+
+                block = np.pad(im, pad_width=((EDGE_THICKNESS, EDGE_THICKNESS), (EDGE_THICKNESS, EDGE_THICKNESS), (0,0)),
+                               mode='constant', constant_values=((RED, RED), (RED, RED), (0, 0)))
+            display[low_i:high_i, low_j:high_j] = block
+    cv2.imshow('test', display)
+    cv2.waitKey()
+    cv2.imwrite('Results/rank_list.png', display)
 

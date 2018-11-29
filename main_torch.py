@@ -13,7 +13,7 @@ else:
 def minkowski_metric(x, y, p):
 
     x = x.unsqueeze(dim=1)
-    
+
     distances = (y - x)
     distances = torch.pow(distances, p)
     distances = torch.sum(distances, dim=0)
@@ -27,18 +27,18 @@ def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
     features_classify = torch.from_numpy(features[:, gallery_indices]).type(Tensor)
     features_query = torch.from_numpy(features[:, query_indices]).type(Tensor)
     query_distances = torch.zeros((query_indices.shape[0], gallery_indices.shape[0])).type(Tensor)
-    gallery_mask = torch.from_numpy(1 - gallery_mask.astype(np.uint8))
+    gallery_mask_t = torch.from_numpy(1 - gallery_mask.astype(np.uint8))
     if torch.cuda.is_available():
-        gallery_mask = gallery_mask.cuda()
+        gallery_mask_t = gallery_mask_t.cuda()
 
-
+    print('Calculating nearest neighbours:')
     for i in range(query_indices.shape[0]):
-        print(i)
+        io.loading_bar(i, query_indices.shape[0])
         # gallery_mask_temp = np.repeat(gallery_mask[i, None], features.shape[0], axis=0)
         out_d = minkowski_metric(features_query[:, i],
-                         torch.index_select(features_classify, 1, gallery_mask[i].nonzero()[:, 0]).type(Tensor), 2)
-        query_distances[i, gallery_mask[i].nonzero()[:, 0]] = out_d
-    query_distances = np.ma.masked_where(gallery_mask.cpu().numpy(), query_distances.cpu().numpy())
+                         torch.index_select(features_classify, 1, gallery_mask_t[i].nonzero()[:, 0]).type(Tensor), 2)
+        query_distances[i, gallery_mask_t[i].nonzero()[:, 0]] = out_d
+    query_distances = np.ma.masked_where(gallery_mask, query_distances.cpu().numpy())
 
     return query_distances
 
@@ -70,4 +70,5 @@ if __name__ == '__main__':
 
     gallery_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)
     distances_query = KNN_classifier(features, gallery_indices, query_indices, gallery_mask)
-    # print(distances_query)
+    ranked_winners, ranked_distances = eval.rank(10, distances_query, gallery_indices)
+    io.display_ranklist(query_indices, ranked_winners, 10, 3)
