@@ -19,6 +19,7 @@ def get_to_remove_mask(cam_id, query_indexes, gallery_index, g_t):
     to_remove = (gallery_label == query_label) & (query_cam_id == gallery_cam_id)
     return to_remove
 
+
 def compute_score(rank, ground_truth, winner_indexes, query_indexes):
 
     query_labels = ground_truth[query_indexes]

@@ -216,10 +216,10 @@ def loading_bar(current, max):
         print('Completion', int(current/max*100), '%')
 
 
+# Override choice allows you to select the query you'd like to display instead of randomly selecting them
+def display_ranklist(query_indexes, winner_indexes, rank, N, override_choice=None):
 
-def display_ranklist(query_indexes, winner_indexes, rank, N):
-
-
+    # Parameters for later
     EDGE_THICKNESS = 10
     RED = (0, 0, 255)
     GREEN = (0, 255, 0)
@@ -237,39 +237,47 @@ def display_ranklist(query_indexes, winner_indexes, rank, N):
                                mode='constant', constant_values=((WHITE, WHITE), (WHITE, WHITE), (0, 0)))
         return final
 
+    # Array that contains the total image
+    display = np.zeros(((IMAGE_SIZE[0]+2*EDGE_THICKNESS)*N,
+                        (IMAGE_SIZE[1]+2*EDGE_THICKNESS)*(rank+1), 3), dtype=np.uint8)
 
-    display = np.zeros(((IMAGE_SIZE[0]+2*EDGE_THICKNESS)*N, (IMAGE_SIZE[1]+2*EDGE_THICKNESS)*(rank+1), 3), dtype=np.uint8)
-
-    choice = np.arange(0, query_indexes.shape[0])
-    np.random.shuffle(choice)
-    choice = choice[:N]
-    chosen_query_ix = query_indexes[choice]
-    chosen_winner_ix = winner_indexes[choice, :]
+    if override_choice is None: # Find which query to display randomly
+        choice = np.arange(0, query_indexes.shape[0])
+        np.random.shuffle(choice)
+        choice = choice[:N]
+        chosen_query_ix = query_indexes[choice]
+        chosen_winner_ix = winner_indexes[choice, :]
+    else: # Use the user-specified indices
+        chosen_query_ix = query_indexes[override_choice]
+        chosen_winner_ix = winner_indexes[override_choice, :]
+        N = override_choice.shape[0]
+    # Get all query images and their ground_truth
     query_images, q_g_t, _ , _ = get_im_info(index=chosen_query_ix.tolist())
-
+    # Goes through the rows
     for n in range(N):
+        # Define where on the image you're working
         low_i = (EDGE_THICKNESS * 2 + IMAGE_SIZE[0]) * n
         high_i = (EDGE_THICKNESS * 2 + IMAGE_SIZE[0]) * (n + 1)
         low_j = 0
         high_j = (EDGE_THICKNESS * 2 + IMAGE_SIZE[1])
 
-        winner_images, w_g_t, _, _ = get_im_info(index=chosen_winner_ix[n].tolist())
-
-        positives = (np.array(w_g_t) == np.array(q_g_t[n]))
-
+        # Add the query images on the left
         display[low_i:high_i, low_j:high_j] = pad_frame(query_images[n], GRAY)
 
+        # Get all the winning images and their ground-truth
+        winner_images, w_g_t, _, _ = get_im_info(index=chosen_winner_ix[n].tolist())
+        # Get positive matches
+        positives = (np.array(w_g_t) == np.array(q_g_t[n]))
 
+        # Goes through the columns
         for i, im in enumerate(winner_images):
 
             low_j = (EDGE_THICKNESS * 2 + IMAGE_SIZE[1]) * (i + 1)
             high_j = (EDGE_THICKNESS * 2 + IMAGE_SIZE[1]) * (i + 2)
+
             if positives[i]:
-
                 block = pad_frame(im, GREEN)
-
             else:
-
                 block = pad_frame(im, RED)
             display[low_i:high_i, low_j:high_j] = block
     cv2.imshow('test', display)
