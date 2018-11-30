@@ -18,3 +18,15 @@ def get_to_remove_mask(cam_id, query_indexes, gallery_index, g_t):
 
     to_remove = (gallery_label == query_label) & (query_cam_id == gallery_cam_id)
     return to_remove
+
+def compute_score(rank, ground_truth, winner_indexes, query_indexes):
+
+    query_labels = ground_truth[query_indexes]
+    winner_labels = ground_truth[winner_indexes[:, :rank]]
+    zero_if_match = winner_labels - query_labels[:, None]
+    zero_bool = (zero_if_match==0).astype(np.uint8)
+    number_of_positives = np.sum(zero_bool, axis=1)
+    score_by_query = number_of_positives/rank
+    total_score = np.mean(score_by_query)
+
+    return score_by_query, total_score

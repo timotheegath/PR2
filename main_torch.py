@@ -61,6 +61,7 @@ def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
 if __name__ == '__main__':
 
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
+    ground_truth = io.get_ground_truth()
     features = features.transpose()
     # data = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')
     cam_ids = io.get_cam_ids()
@@ -72,3 +73,6 @@ if __name__ == '__main__':
     distances_query = KNN_classifier(features, gallery_indices, query_indices, gallery_mask)
     ranked_winners, ranked_distances = eval.rank(10, distances_query, gallery_indices)
     io.display_ranklist(query_indices, ranked_winners, 10, 3)
+
+    l_score, score = eval.compute_score(10, ground_truth, ranked_winners, query_indices)
+    print(l_score, score)

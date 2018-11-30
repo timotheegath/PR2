@@ -218,10 +218,25 @@ def loading_bar(current, max):
 
 
 def display_ranklist(query_indexes, winner_indexes, rank, N):
-    EDGE_THICKNESS = 20
+
+
+    EDGE_THICKNESS = 10
     RED = (0, 0, 255)
     GREEN = (0, 255, 0)
-    GRAY = (20, 20, 20)
+    GRAY = (50, 50, 50)
+    WHITE = (255, 255, 255)
+
+    def pad_frame(picture, color):
+
+        interm = np.pad(picture,
+                        pad_width=((EDGE_THICKNESS//2, EDGE_THICKNESS//2), (EDGE_THICKNESS//2, EDGE_THICKNESS//2), (0,0)),
+                               mode='constant', constant_values=((color, color), (color, color), (0, 0)))
+
+        final = np.pad(interm,
+                        pad_width=((EDGE_THICKNESS//2, EDGE_THICKNESS//2), (EDGE_THICKNESS//2, EDGE_THICKNESS//2), (0,0)),
+                               mode='constant', constant_values=((WHITE, WHITE), (WHITE, WHITE), (0, 0)))
+        return final
+
 
     display = np.zeros(((IMAGE_SIZE[0]+2*EDGE_THICKNESS)*N, (IMAGE_SIZE[1]+2*EDGE_THICKNESS)*(rank+1), 3), dtype=np.uint8)
 
@@ -242,8 +257,7 @@ def display_ranklist(query_indexes, winner_indexes, rank, N):
 
         positives = (np.array(w_g_t) == np.array(q_g_t[n]))
 
-        display[low_i:high_i, low_j:high_j] = np.pad(query_images[n], pad_width=((EDGE_THICKNESS, EDGE_THICKNESS), (EDGE_THICKNESS, EDGE_THICKNESS), (0,0)),
-                               mode='constant', constant_values=((GRAY, GRAY), (GRAY, GRAY), (0, 0)))
+        display[low_i:high_i, low_j:high_j] = pad_frame(query_images[n], GRAY)
 
 
         for i, im in enumerate(winner_images):
@@ -252,15 +266,15 @@ def display_ranklist(query_indexes, winner_indexes, rank, N):
             high_j = (EDGE_THICKNESS * 2 + IMAGE_SIZE[1]) * (i + 2)
             if positives[i]:
 
-                block = np.pad(im, pad_width=((EDGE_THICKNESS, EDGE_THICKNESS), (EDGE_THICKNESS, EDGE_THICKNESS), (0,0)),
-                               mode='constant', constant_values=((GREEN, GREEN), (GREEN, GREEN), (0, 0)))
+                block = pad_frame(im, GREEN)
 
             else:
 
-                block = np.pad(im, pad_width=((EDGE_THICKNESS, EDGE_THICKNESS), (EDGE_THICKNESS, EDGE_THICKNESS), (0,0)),
-                               mode='constant', constant_values=((RED, RED), (RED, RED), (0, 0)))
+                block = pad_frame(im, RED)
             display[low_i:high_i, low_j:high_j] = block
     cv2.imshow('test', display)
     cv2.waitKey()
     cv2.imwrite('Results/rank_list.png', display)
+
+
 
