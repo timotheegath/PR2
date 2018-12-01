@@ -3,6 +3,7 @@ import data_in_out as io
 from scipy.io import loadmat
 from sklearn.neighbors import KNeighborsClassifier as KNNC
 import evaluation as eval
+import metrics
 
 
 def minkowski_metric(x, y, p):
@@ -49,6 +50,7 @@ if __name__ == '__main__':
 
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     features = features.transpose()
+
     # data = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')
     cam_ids = io.get_cam_ids()
     query_indices = io.get_query_indexes()

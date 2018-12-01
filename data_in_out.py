@@ -284,5 +284,10 @@ def display_ranklist(query_indexes, winner_indexes, rank, N, override_choice=Non
     cv2.waitKey()
     cv2.imwrite('Results/rank_list.png', display)
 
+def big_color_map():
 
+    color_map = np.zeros((255*3, 3))
+    for i in range(255*3):
+        color_map[i] = [min(i, 255), max(i-255, 0), max(i-510, 0)]
+    return color_map
 

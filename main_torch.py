@@ -1,14 +1,29 @@
 import numpy as np
 import data_in_out as io
 import torch
-from scipy.io import loadmat
-from sklearn.neighbors import KNeighborsClassifier as KNNC
 import evaluation as eval
+import metrics
+import matplotlib.pyplot as plt
 
 if torch.cuda.is_available():
     Tensor = torch.cuda.FloatTensor
 else:
     Tensor = torch.FloatTensor
+
+def build_histogram(features):
+
+    dimensions = features.shape[0]
+    hist = np.histogramdd(features.transpose(), density=True)
+    print(hist.shape)
+
+    return hist
+
+def build_covariance(features):
+
+    cov = np.corrcoef(features)
+    plt.imshow(cov)
+    plt.waitforbuttonpress()
+
 
 def minkowski_metric(x, y, p):
 
@@ -42,27 +57,15 @@ def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
 
     return query_distances
 
-# def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
-#
-#     gallery_mindices = np.repeat(gallery_indices[None, :], query_indices.shape[0], axis=0)
-#     gallery_mindices = np.ma.masked_where(gallery_mask, gallery_mindices)
-#
-#     features_classify = features[gallery_indices]
-#     features_classify = np.repeat(features_classify.transpose()[None, ...], query_indices.shape[0], axis=0)
-#     features_classify = features_classify[gallery_mindices[..., None]]
-#
-#     #labels_classify = labels[gallery_indices]
-#     features_query = features[query_indices]
-#     print(features_query.shape, features_classify.shape)
-#
-#     #distance = minkowski_metric(features_query, features_classify, 2)
-#     return None
 
 if __name__ == '__main__':
 
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     ground_truth = io.get_ground_truth()
     features = features.transpose()
+    h_distance = metrics.H_Gaussian()
+    print(h_distance(features[:, 0], features[:, 1]))
+    build_covariance(features)
     # data = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')
     cam_ids = io.get_cam_ids()
     query_indices = io.get_query_indexes()
