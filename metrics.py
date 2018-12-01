@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from scipy.optimize import minimize as min
 
 if torch.cuda.is_available():
     Tensor = torch.cuda.FloatTensor
@@ -32,8 +33,65 @@ class H_Gaussian():
 
         d = torch.exp(-(torch.mm(torch.mm((x - y).transpose(1, 0), self.Q), x - y))/(2 * self.sigma ** 2))
         return d
+
+
+def bileanar_similarity(x, y, bilinear_matrix, cosine=True):
+
+    if isinstance(x, np.ndarray):
+        x = torch.from_numpy(x).type(Tensor)
+        y = torch.from_numpy(y).type(Tensor)
+        M = torch.from_numpy(bilinear_matrix).type(Tensor)
+
+    if cosine == True:
+        Kcos = torch.mm(x.transpose(), y)
+        Kcos /= (torch.norm(x, 2) * torch.norm(y, 2))
+        return Kcos
+    else:
+        Km = torch.mm(torch.mm(x.transpose, M), y)
+        return Km
+
+
+def cross_correlation(x, y):
+
+    if isinstance(x, np.ndarray):
+        x = torch.from_numpy(x).type(Tensor)
+        y = torch.from_numpy(y).type(Tensor)
+
+    cc = torch.sum(torch.mul(x, y))
+    return cc
+
+def mahalanobis_distance(x, y, A):
+    if isinstance(x, np.ndarray):
+        x = torch.from_numpy(x).type(Tensor)
+        y = torch.from_numpy(y).type(Tensor)
+        A = torch.from_numpy(A).type(Tensor)
+
+    y = y.unsqueeze(dim=1)
+    distances = torch.mm(torch.mm((x - y).transpose, A), (x - y))
+    return distances
+
+#IN PROGRESS
+def optmize(model_matrix, training_features, labels, slack_var=False):
+
+    distances = torch.zeros(training_features.shape[1] - 1, training_features.shape[1])
+    for i in range(training_features.shape[1]):
+        out_d = mahalanobis_distance(training_features, training_features[i], model_matrix)
+        distances[:, i] = out_d[out_d.nonzero]
+
+    if isinstance(model_matrix, np.ndarray):
+        model_matrix = torch.from_numpy(model_matrix)/type(Tensor)
+
+    #model_parameters = model_matrix.view(-1)
+
+    #min(mahalanobis_distance())
+
+
+
+
+
 def gaussian_kernel(x, sigma=0.5):
 
     torch.exp()
+
 
 
