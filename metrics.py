@@ -11,6 +11,8 @@ class H_Gaussian():
     def __init__(self):
 
         self.Q = torch.zeros((2048, 2048)).type(Tensor)
+
+
         self.sigma = torch.zeros((1, )).type(Tensor)
         self.parameters = [self.Q, self.sigma]
         for p in self.parameters:

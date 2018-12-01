@@ -291,3 +291,5 @@ def big_color_map():
         color_map[i] = [min(i, 255), max(i-255, 0), max(i-510, 0)]
     return color_map
 
+
+

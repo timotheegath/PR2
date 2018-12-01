@@ -3,7 +3,32 @@ import data_in_out as io
 from scipy.io import loadmat
 from sklearn.neighbors import KNeighborsClassifier as KNNC
 import evaluation as eval
+import torch
 import metrics
+
+
+class custom_loss(torch.autograd.function):
+
+    @staticmethod
+    def forward(ctx, distances, labels):
+        ctx.save_for_backward(distances)
+        same = torch.from_numpy(labels[:, None] == labels[:, None].transpose()).type(torch.LongTensor)
+        same_distances = torch.sum(distances[same])
+
+
+def train_step(features, distance, training_index, g_t):
+    distances = torch.zeros((training_index.shape[0], training_index.shape[0]))
+    labels = g_t[training_index]
+
+    for i in range(training_index.shape[0]):
+        for j in range(i+1):
+            distances[i, j] = distance(features[:, i], features[:, j])
+
+    constraint = torch.distributions.constraints.positive_definite
+    constraint.check(distance)
+
+
+
 
 
 def minkowski_metric(x, y, p):
@@ -49,7 +74,7 @@ def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
 if __name__ == '__main__':
 
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
-    features = features.transpose()
+    features = torch.from_array(features.transpose())
 
     # data = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')
     cam_ids = io.get_cam_ids()
@@ -57,6 +82,6 @@ if __name__ == '__main__':
     gallery_indices = io.get_gallery_indexes()
     g_ts = io.get_ground_truth()
 
-    gallery_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)
-    distances_query = KNN_classifier(features, gallery_indices, query_indices, gallery_mask)
-    print(distances_query.shape)
+    # gallery_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)
+    # distances_query = KNN_classifier(features, gallery_indices, query_indices, gallery_mask)
+    # print(distances_query.shape)

@@ -64,7 +64,8 @@ if __name__ == '__main__':
     ground_truth = io.get_ground_truth()
     features = features.transpose()
     h_distance = metrics.H_Gaussian()
-    print(h_distance(features[:, 0], features[:, 1]))
+
+
     build_covariance(features)
     # data = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')
     cam_ids = io.get_cam_ids()
