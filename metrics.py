@@ -12,8 +12,6 @@ class H_Gaussian():
     def __init__(self):
 
         self.Q = torch.zeros((2048, 2048)).type(Tensor)
-
-
         self.sigma = torch.zeros((1, )).type(Tensor)
         self.parameters = [self.Q, self.sigma]
         for p in self.parameters:
@@ -35,7 +33,7 @@ class H_Gaussian():
         return d
 
 
-class bileanar_similarity(x, y):
+class bileanar_similarity():
 
     def __init__(self, bilinear_matrix, cosine=True):
 
