@@ -122,9 +122,20 @@ def optimize(model_matrix, training_features, labels, slack_var=False):
 
 # Implementing loss on slide 87 of distance metrics
 def loss3(distances, labels, metric):
+    
     same_person = torch.from_numpy(labels[:, None] == labels[:, None].transpose()).type(torch.LongTensor)
-    different_person = 1 - same_person
+    # different_person = 1 - same_person
     same_distance_score = torch.sum(
         torch.sqrt(distances*same_person))/2  # Dividing by 2 since the matrix is symmetrical ?
-    distance_difference = torch.sum(
-        torch.sqrt(distances * different_person)) / 2  # Dividing by 2 since the matrix is symmetrical ?
+    relative_distance = torch.zeros(1).type(Tensor)
+    for i in range(distances.shape[0]):
+        current_value = distances[i, 0]
+        for j in range(distances.shape[1]):
+            if i == j:
+                break
+            relative_distance += (current_value-distances[i, j])
+
+    # Lagrangian trick, Going from maximize to minimize
+    distance_difference = -relative_distance + 1
+    # How do you enforce positive definite matrices ?
+    return same_distance_score + distance_difference
