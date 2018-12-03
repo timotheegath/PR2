@@ -35,21 +35,63 @@ class H_Gaussian():
         return d
 
 
-def bileanar_similarity(x, y, bilinear_matrix, cosine=True):
+class bileanar_similarity(x, y):
 
-    if isinstance(x, np.ndarray):
-        x = torch.from_numpy(x).type(Tensor)
-        y = torch.from_numpy(y).type(Tensor)
-        M = torch.from_numpy(bilinear_matrix).type(Tensor)
+    def __init__(self, bilinear_matrix, cosine=True):
 
-    if cosine == True:
-        Kcos = torch.mm(x.transpose(), y)
-        Kcos /= (torch.norm(x, 2) * torch.norm(y, 2))
-        return Kcos
-    else:
-        Km = torch.mm(torch.mm(x.transpose, M), y)
-        return Km
+        if isinstance(bilinear_matrix, np.ndarray):
+            bilinear_matrix = torch.from_numpy(bilinear_matrix).type(Tensor)
 
+        if bilinear_matrix.dtype != Tensor.dtype:
+            bilinear_matrix = bilinear_matrix.type(Tensor)
+        self.bilinear_matrix = bilinear_matrix
+        self.cosine = cosine
+
+    def __call__(self, x, y):
+        if isinstance(x, np.ndarray):
+            x = torch.from_numpy(x).type(Tensor)
+            y = torch.from_numpy(y).type(Tensor)
+
+
+        if x.dtype != Tensor.dtype:
+            x = x.type(Tensor)
+            y = y.type(Tensor)
+        if x.dim() == 1:
+            x = x.unsqueeze(1)
+            y = y.unsqueeze(1)
+        if self.cosine:
+            Kcos = torch.mm(x.transpose(), y)
+            Kcos /= (torch.norm(x, 2) * torch.norm(y, 2))
+            return Kcos
+        else:
+            Km = torch.mm(torch.mm(x.transpose, self.bilinear_matrix), y)
+            return Km
+
+class mahalanobis_distance():
+
+    def __init__(self, A):
+        if isinstance(A, np.ndarray):
+            A = torch.from_numpy(A).type(Tensor)
+
+        if A.dtype != Tensor.dtype:
+            A = A.type(Tensor)
+
+        self.A = A
+
+    def __call__(self, x, y):
+        if isinstance(x, np.ndarray):
+            x = torch.from_numpy(x).type(Tensor)
+            y = torch.from_numpy(y).type(Tensor)
+
+        if x.dtype != Tensor.dtype:
+            x = x.type(Tensor)
+            y = y.type(Tensor)
+        if x.dim() == 1:
+            x = x.unsqueeze(1)
+            y = y.unsqueeze(1)
+
+        distances = torch.mm(torch.mm((x - y).transpose, self.A), (x - y))
+        return distances
 
 def cross_correlation(x, y):
 
@@ -60,18 +102,10 @@ def cross_correlation(x, y):
     cc = torch.sum(torch.mul(x, y))
     return cc
 
-def mahalanobis_distance(x, y, A):
-    if isinstance(x, np.ndarray):
-        x = torch.from_numpy(x).type(Tensor)
-        y = torch.from_numpy(y).type(Tensor)
-        A = torch.from_numpy(A).type(Tensor)
 
-    y = y.unsqueeze(dim=1)
-    distances = torch.mm(torch.mm((x - y).transpose, A), (x - y))
-    return distances
 
 #IN PROGRESS
-def optmize(model_matrix, training_features, labels, slack_var=False):
+def optimize(model_matrix, training_features, labels, slack_var=False):
 
     distances = torch.zeros(training_features.shape[1] - 1, training_features.shape[1])
     for i in range(training_features.shape[1]):
