@@ -11,9 +11,10 @@ class H_Gaussian():
 
     def __init__(self):
 
-        self.Q = torch.zeros((2048, 2048)).type(Tensor)
+        A = torch.zeros((2048, 2048)).type(Tensor)
+        self.exp_distance = Mahalanobis(A)
         self.sigma = torch.zeros((1, )).type(Tensor)
-        self.parameters = [self.Q, self.sigma]
+        self.parameters = [self.exp_distance.A, self.sigma]
         for p in self.parameters:
             torch.nn.init.normal_(p)
 
@@ -29,11 +30,13 @@ class H_Gaussian():
             x = x.unsqueeze(1)
             y = y.unsqueeze(1)
 
-        d = torch.exp(-(torch.mm(torch.mm((x - y).transpose(1, 0), self.Q), x - y))/(2 * self.sigma ** 2))
+        d = torch.exp((-self.exp_distance(x, y))/(2 * self.sigma ** 2))
         return d
 
+    def update_A(self, new):
+        self.exp_distance.A = new
 
-class bileanar_similarity():
+class BilinearSimilarity():
 
     def __init__(self, bilinear_matrix, cosine=True):
 
@@ -50,7 +53,6 @@ class bileanar_similarity():
             x = torch.from_numpy(x).type(Tensor)
             y = torch.from_numpy(y).type(Tensor)
 
-
         if x.dtype != Tensor.dtype:
             x = x.type(Tensor)
             y = y.type(Tensor)
@@ -65,7 +67,7 @@ class bileanar_similarity():
             Km = torch.mm(torch.mm(x.transpose, self.bilinear_matrix), y)
             return Km
 
-class mahalanobis_distance():
+class Mahalanobis():
 
     def __init__(self, A):
         if isinstance(A, np.ndarray):
@@ -106,8 +108,9 @@ def cross_correlation(x, y):
 def optimize(model_matrix, training_features, labels, slack_var=False):
 
     distances = torch.zeros(training_features.shape[1] - 1, training_features.shape[1])
+    mahalanobis_distance = Mahalanobis(model_matrix)
     for i in range(training_features.shape[1]):
-        out_d = mahalanobis_distance(training_features, training_features[i], model_matrix)
+        out_d = mahalanobis_distance(training_features, training_features[i])
         distances[:, i] = out_d[out_d.nonzero]
 
     if isinstance(model_matrix, np.ndarray):
@@ -117,13 +120,11 @@ def optimize(model_matrix, training_features, labels, slack_var=False):
 
     #min(mahalanobis_distance())
 
-
-
-
-
-def gaussian_kernel(x, sigma=0.5):
-
-    torch.exp()
-
-
-
+# Implementing loss on slide 87 of distance metrics
+def loss3(distances, labels, metric):
+    same_person = torch.from_numpy(labels[:, None] == labels[:, None].transpose()).type(torch.LongTensor)
+    different_person = 1 - same_person
+    same_distance_score = torch.sum(
+        torch.sqrt(distances*same_person))/2  # Dividing by 2 since the matrix is symmetrical ?
+    distance_difference = torch.sum(
+        torch.sqrt(distances * different_person)) / 2  # Dividing by 2 since the matrix is symmetrical ?
