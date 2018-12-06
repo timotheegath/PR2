@@ -3,6 +3,7 @@ import numpy as np
 import data_in_out as io
 from torch import autograd
 from scipy.optimize import minimize as min
+from scipy.io import savemat
 import evaluation as eval
 
 if torch.cuda.is_available():
@@ -130,9 +131,9 @@ def new_Maha(x, y, L, sigma):
 
     return distance
 
-def optimize_torch(features, training_indexes, ground_truth, iterations, batch_size=200):
-    L = ((torch.rand((2048, 2048), requires_grad=True) - 0.5)*100).retain_grad()
-    lagrangian = torch.full((1, ), 200, requires_grad=True)
+def optimize_torch(features, training_indexes, ground_truth, iterations, batch_size=7000):
+    L = torch.rand((2048, 2048), requires_grad=True)
+    lagrangian = torch.full((1, ), 1, requires_grad=True)
     def get_batch():
         np.random.shuffle(training_indexes)
         batch_index = training_indexes[:batch_size]
@@ -146,37 +147,44 @@ def optimize_torch(features, training_indexes, ground_truth, iterations, batch_s
             features = torch.from_numpy(features).cpu()
         features = normalise_features(features)
     optimizer = torch.optim.Adadelta(params=[L], lr=0.1)
-
+    scores = []
+    losses = []
     for n in range(iterations):
+        try:
+            L_new = torch.tril(L)
 
-        L_new = torch.tril(L)
+            Lagrag_new = torch.clamp(lagrangian, min=10)
 
-        Lagrag_new = torch.clamp(lagrangian, min=10)
+            batch_index, batch_features, batch_labels = get_batch()
+            batch_features = batch_features.type(Tensor)
+            distances = torch.empty((batch_size, batch_size)).type(Tensor)
 
-        batch_index, batch_features, batch_labels = get_batch()
-        batch_features = batch_features.type(Tensor)
-        distances = torch.empty((batch_size, batch_size)).type(Tensor)
+            for i in range(batch_size):
 
-        for i in range(batch_size):
+                distances[i, :] = new_Maha(batch_features[:, i], batch_features, L_new, torch.full((1,), 1))
 
-            distances[i, :] = new_Maha(batch_features[:, i], batch_features, L_new, torch.full((1,), 1))
+                # io.loading_bar(i, batch_size)
 
-            # io.loading_bar(i, batch_size)
+            if (distances < 0).any():
+                print('Negative distances detected')
+            loss = loss1(distances, batch_labels, batch_index, Lagrag_new)
+            print(loss, lagrangian)
 
-        if (distances < 0).any():
-            print('Negative distances detected')
-        loss = loss1(distances, batch_labels, batch_index, Lagrag_new)
-        print(loss, lagrangian)
+            loss.backward()
+            print(L)
+            optimizer.step()
 
-        loss.backward()
-        print(L)
-        optimizer.step()
+            optimizer.zero_grad()
+            ranked_idx, _ = eval.rank(10, distances.clone().detach(), batch_index)
+            score_by_query, total_score = eval.compute_score(10, ground_truth, ranked_idx, batch_index)
+            # io.display_ranklist(training_indexes[:batch_size],ranked_idx, rank=10, N=3)
+            print(total_score)
+            scores.append([score_by_query, total_score])
+            losses.append(loss.clone().detach())
 
-        optimizer.zero_grad()
-        ranked_idx, _ = eval.rank(10, distances.clone().detach(), batch_index)
-        score_by_query, total_score = eval.compute_score(10, ground_truth, ranked_idx, batch_index)
-        # io.display_ranklist(training_indexes[:batch_size],ranked_idx, rank=10, N=3)
-        print(total_score)
+        except KeyboardInterrupt:
+
+            savemat('training_metrics', {'score': scores, 'losses': losses})
 
 
 
