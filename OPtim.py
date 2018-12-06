@@ -1,5 +1,6 @@
 import numpy as np
 import data_in_out as io
+import evaluation as eval
 import torch
 from scipy.spatial.distance import mahalanobis
 from scipy import optimize
@@ -40,7 +41,7 @@ def objective_function(parameters, features, labels):
     Dw = torch.masked_select(distances, label_mask)
     Db = torch.masked_select(distances, 1 - label_mask)
     objective = torch.sum(Dw) - torch.sum(Db)
-    return objective
+    return objective, distances
 
 
 def optim_call(parameters):
@@ -52,6 +53,7 @@ if __name__ == '__main__':
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     features = features.transpose()
     labels = io.get_ground_truth()
+    ground_truth = io.get_ground_truth()
 
     train_ind = io.get_training_indexes() - 1
     training_features = features[:, train_ind]
@@ -68,14 +70,15 @@ if __name__ == '__main__':
 
     for it in range(500):
         parameters_ = torch.tril(parameters).view(-1)
-        loss = objective_function(parameters_, training_features, training_labels)
+        loss, distances = objective_function(parameters_, training_features, training_labels)
         print(loss)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-
-
+        ranked_idx, _ = eval.rank(10, distances.clone().detach(), train_ind)
+        score_by_query, total_score = eval.compute_score(10, ground_truth, ranked_idx, train_ind)
+        print(total_score)
     # Opt = minimize(objective_function, parameters, (training_features, training_labels), callback=optim_call)
 
 
