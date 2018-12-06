@@ -75,6 +75,7 @@ if __name__ == '__main__':
         optimizer.step()
 
 
+
     # Opt = minimize(objective_function, parameters, (training_features, training_labels), callback=optim_call)
 
 
