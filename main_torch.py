@@ -56,8 +56,8 @@ if __name__ == '__main__':
     cam_ids = io.get_cam_ids()
     query_indices = io.get_query_indexes()
     gallery_indices = io.get_gallery_indexes()
-    training_index = io.get_training_indexes() - 1
-    g_ts = io.get_ground_truth()
+    training_index = io.get_training_indexes()
+
     metrics.optimize_torch(features, training_index, ground_truth, 1000)
 
     gallery_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)

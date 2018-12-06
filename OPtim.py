@@ -13,7 +13,7 @@ else:
 # ----------------------------------------------------------------------------------------------------------------------
 
 def objective_function(parameters, features, labels = None, features_compare = None):
-
+    sigma = 2
     if isinstance(parameters, np.ndarray):
         parameters = torch.from_numpy(parameters).type(Tensor)
     if isinstance(features, np.ndarray):
@@ -46,7 +46,9 @@ def objective_function(parameters, features, labels = None, features_compare = N
     # print(L_features.shape, L_features_norm.shape, L_features_norm_t.shape, L_features_mm.shape)
     # print(parameters)
 
-    distances = L_features_norm + L_features_compare_norm - 2.0 * L_features_mm
+    distances = 2 - 2*(torch.exp(-L_features_norm/(2*sigma**2)) *
+                       torch.exp(-L_features_compare_norm/(2*sigma**2)) *
+                       torch.exp(2*L_features_mm/(2*sigma**2)))
 
     if features_compare is not None:
         return distances.transpose(1, 0)
@@ -67,9 +69,12 @@ def optim_call(parameters):
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-def optimize_torch(features, training_indexes, ground_truth, iterations, batch_size=200):
+def optimize_torch(features, full_training_indexes, full_ground_truth, iterations, batch_size=200):
     L = ((torch.rand((2048, 2048), requires_grad=True) - 0.5)*100).retain_grad()
     lagrangian = torch.full((1, ), 200, requires_grad=True)
+    training_indexes = np.copy(full_training_indexes)
+    np.random.shuffle(training_indexes)
+    training_indexes[:batch_size]
     def get_batch():
         np.random.shuffle(training_indexes)
         batch_index = training_indexes[:batch_size]
@@ -146,8 +151,7 @@ if __name__ == '__main__':
     cam_ids = io.get_cam_ids()
 
     train_ind = io.get_training_indexes() - 1
-    training_features = features[:, train_ind]
-    training_labels = labels[train_ind]
+
     values, counts = np.unique(training_labels, return_counts=True)
 
     query_ind = io.get_query_indexes()
@@ -159,10 +163,16 @@ if __name__ == '__main__':
     removal_mask = eval.get_to_remove_mask(cam_ids, query_ind, gallery_ind, ground_truth)
     # removal_mask = torch.from_numpy(removal_mask.astype(dtype=np.uint8))
 
-    parameters = torch.ones((training_features.shape[0], training_features.shape[0]), requires_grad=True)
+    parameters = torch.ones((features.shape[0], features.shape[0]), requires_grad=True)
     optimizer = torch.optim.Adam([parameters], lr=0.1)
 
+    batch_size = 200
     for it in range(500):
+        temp_index = np.copy(train_ind)
+        np.random.shuffle(temp_index)
+        temp_index = temp_index[:batch_size]
+        training_features = features[:, temp_index]
+        training_labels = labels[temp_index]
         parameters_ = torch.tril(parameters).view(-1)
         loss, distances = objective_function(parameters_, training_features, labels=training_labels)
         optimizer.zero_grad()
@@ -171,9 +181,9 @@ if __name__ == '__main__':
 
         test_distances = objective_function(parameters_, query_features, features_compare=gallery_features )
 
-        ranked_idx_train, _ = eval.rank(10, distances.clone().detach(), train_ind)
+        ranked_idx_train, _ = eval.rank(10, distances.clone().detach(), temp_index)
         ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().numpy(), gallery_ind, removal_mask=removal_mask)
-        score_by_query_t, total_score_t = eval.compute_score(10, ground_truth, ranked_idx_train, train_ind)
+        score_by_query_t, total_score_t = eval.compute_score(10, ground_truth, ranked_idx_train, temp_index)
         score_by_query, total_score = eval.compute_score(10, ground_truth, ranked_idx_test, query_ind)
         print(loss)
         print(total_score_t, total_score)
