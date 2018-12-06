@@ -31,29 +31,29 @@ def train_step(features, distance, training_index, g_t):
 
 
 
-def minkowski_metric(x, y, p):
+# def minkowski_metric(x, y, p):
+#
+#     distances = - (y - x[:, None])
+#     distances = (distances ** p)
+#     distances = np.sum(distances, axis=0)
+#     # distances = (distances ** 1/p)
+#
+#     return distances
 
-    distances = - (y - x[:, None])
-    distances = (distances ** p)
-    distances = np.sum(distances, axis=0)
-    # distances = (distances ** 1/p)
 
-    return distances
-
-
-def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
-
-    features_classify = features[:, gallery_indices]
-    features_query = features[:, query_indices]
-    query_distances = np.zeros((query_indices.shape[0], gallery_indices.shape[0]))
-
-    for i in range(query_indices.shape[0]):
-        print('HERE: ', i)
-        gallery_mask_temp = np.repeat(gallery_mask[i, None], features.shape[0], axis=0)
-        query_distances[i, :] = minkowski_metric(features_query[:, i], np.ma.masked_where(gallery_mask_temp, features_classify), 2)
-    query_distances = np.ma.masked_where(gallery_mask, query_distances)
-
-    return query_distances
+# def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
+#
+#     features_classify = features[:, gallery_indices]
+#     features_query = features[:, query_indices]
+#     query_distances = np.zeros((query_indices.shape[0], gallery_indices.shape[0]))
+#
+#     for i in range(query_indices.shape[0]):
+#         print('HERE: ', i)
+#         gallery_mask_temp = np.repeat(gallery_mask[i, None], features.shape[0], axis=0)
+#         query_distances[i, :] = minkowski_metric(features_query[:, i], np.ma.masked_where(gallery_mask_temp, features_classify), 2)
+#     query_distances = np.ma.masked_where(gallery_mask, query_distances)
+#
+#     return query_distances
 
 # def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
 #
