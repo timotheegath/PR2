@@ -63,15 +63,14 @@ if __name__ == '__main__':
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     ground_truth = io.get_ground_truth()
     features = features.transpose()
-    h_distance = metrics.H_Gaussian()
 
-
-    build_covariance(features)
-    # data = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat')
     cam_ids = io.get_cam_ids()
     query_indices = io.get_query_indexes()
     gallery_indices = io.get_gallery_indexes()
+    training_index = io.get_training_indexes() - 1
     g_ts = io.get_ground_truth()
+    metrics.optimize_torch(features, training_index, ground_truth, 1000)
+
 
     gallery_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)
     distances_query = KNN_classifier(features, gallery_indices, query_indices, gallery_mask)
