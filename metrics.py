@@ -3,6 +3,7 @@ import numpy as np
 import data_in_out as io
 from torch import autograd
 from scipy.optimize import minimize as min
+from scipy.io import savemat
 import evaluation as eval
 
 if torch.cuda.is_available():
