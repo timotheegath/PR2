@@ -14,9 +14,9 @@ def build_histogram(features):
 
 def build_covariance(features):
 
-    cov = np.corrcoef(features)
-    plt.imshow(cov)
-    plt.waitforbuttonpress()
+    cov = np.cov(features)
+    # plt.imshow(cov)
+    # plt.waitforbuttonpress()
 
 
 def normalise_features(features):

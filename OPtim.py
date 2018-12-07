@@ -11,58 +11,75 @@ else:
     Tensor = torch.FloatTensor
 
 # ----------------------------------------------------------------------------------------------------------------------
-
-def objective_function(parameters, features, labels = None, features_compare = None):
-
+def mahalanobis_metric(parameters, features, features_compare = None):
     if isinstance(parameters, np.ndarray):
         parameters = torch.from_numpy(parameters).type(Tensor)
     if isinstance(features, np.ndarray):
         features = torch.from_numpy(features).type(Tensor)
-    if isinstance(labels, np.ndarray):
-        labels = torch.from_numpy(labels.astype(dtype=np.int32)).type(Tensor)
     if isinstance(features_compare, np.ndarray):
         features_compare = torch.from_numpy(features_compare).type(Tensor)
 
     shape = features.shape[0]
     L = parameters.view(shape, shape)
-    # print(features.shape, L.shape)
-
-    class_values, class_counts = np.unique(labels, return_counts=True)
 
     L_features = torch.mm(L, features)
-    L_features_norm = (L_features**2).sum(0).view(1, -1)
+    L_features_norm = (L_features ** 2).sum(0).view(1, -1)
 
     if features_compare is not None:
         L_features_compare = torch.mm(L, features_compare)
         L_features_compare_t = torch.transpose(L_features_compare, 1, 0)
-        L_features_compare_norm = (L_features_compare**2).sum(0).view(-1, 1)
+        L_features_compare_norm = (L_features_compare ** 2).sum(0).view(-1, 1)
     else:
         L_features_compare_t = torch.transpose(L_features, 1, 0)
         L_features_compare_norm = L_features_norm.view(-1, 1)
 
-    # L_features_norm_t = L_features_norm.view(-1, 1)
-    # L_features_mm = torch.mm(L_features.transpose(1, 0), L_features)
     L_features_mm = torch.mm(L_features_compare_t, L_features)
-    # print(L_features.shape, L_features_norm.shape, L_features_norm_t.shape, L_features_mm.shape)
-    # print(parameters)
 
     distances = L_features_norm + L_features_compare_norm - 2.0 * L_features_mm
 
-    if features_compare is not None:
-        return distances.transpose(1, 0)
-
-    else:
+    if features_compare is None:
         distances = distances - torch.diag(distances.diag())
-        label_mask = labels.view(1, -1) == labels.view(-1, 1)
-        Dw = torch.masked_select(distances, label_mask)
-        Db = torch.masked_select(distances, 1 - label_mask)
-        objective = torch.sum(Dw) - torch.sum(Db)
+
+    return distances.transpose(1, 0)
+
+
+
+def objective_function(parameters, features, labels):
+
+
+    if isinstance(labels, np.ndarray):
+        labels = torch.from_numpy(labels.astype(dtype=np.int32)).type(Tensor)
+
+    class_values, class_counts = np.unique(labels, return_counts=True)
+
+    distances = mahalanobis_metric(parameters, features, features_compare=None)
+    label_mask = labels.view(1, -1) == labels.view(-1, 1)
+    Dw = torch.masked_select(distances, label_mask)
+    Db = torch.masked_select(distances, 1 - label_mask)
+    objective = torch.sum(Dw) - torch.sum(Db)
     return objective, distances
 
 
 def optim_call(parameters):
 
     print(parameters)
+
+
+def constraint_distances(features):
+
+    if isinstance(features, np.ndarray):
+        features = torch.from_numpy(features).type(Tensor)
+
+    shape0 = features.shape[0]
+    shape1 = features.shape[1]
+    print('Here1')
+    differences = torch.empty(shape0, shape1, shape1)
+    print('Here2')
+    for i in range(shape1):
+        differences[:, 0:i, i] = 0
+        differences[:, i:, i] = features[:, i].view(-1, 1) - features[:, i:]
+        print(differences.shape)
+    return differences
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -145,7 +162,7 @@ if __name__ == '__main__':
     ground_truth = io.get_ground_truth()
     cam_ids = io.get_cam_ids()
 
-    train_ind = io.get_training_indexes() - 1
+    train_ind = io.get_training_indexes()
     training_features = features[:, train_ind]
     training_labels = labels[train_ind]
     values, counts = np.unique(training_labels, return_counts=True)
@@ -159,21 +176,24 @@ if __name__ == '__main__':
     removal_mask = eval.get_to_remove_mask(cam_ids, query_ind, gallery_ind, ground_truth)
     # removal_mask = torch.from_numpy(removal_mask.astype(dtype=np.uint8))
 
-    parameters = torch.ones((training_features.shape[0], training_features.shape[0]), requires_grad=True)
+    parameters = torch.rand((training_features.shape[0], training_features.shape[0]), requires_grad=True)
+    parameters.data = torch.from_numpy(np.linalg.inv(np.cov(training_features))).type(Tensor)
     optimizer = torch.optim.Adam([parameters], lr=0.1)
+
+    # constraint_distances(training_features)
 
     for it in range(500):
         parameters_ = torch.tril(parameters).view(-1)
-        loss, distances = objective_function(parameters_, training_features, labels=training_labels)
+        loss, distances = objective_function(parameters_, training_features, training_labels)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        test_distances = objective_function(parameters_, query_features, features_compare=gallery_features )
+        test_distances = mahalanobis_metric(parameters_, query_features, features_compare=gallery_features)
 
         ranked_idx_train, _ = eval.rank(10, distances.clone().detach(), train_ind)
         ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().numpy(), gallery_ind, removal_mask=removal_mask)
-        score_by_query_t, total_score_t = eval.compute_score(10, ground_truth, ranked_idx_train, train_ind)
-        score_by_query, total_score = eval.compute_score(10, ground_truth, ranked_idx_test, query_ind)
+        total_score_t, query_scores_t = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ind)
+        total_score, query_scores = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
         print(loss)
         print(total_score_t, total_score)

@@ -98,15 +98,39 @@ def cross_correlation(x, y):
     cc = torch.sum(torch.mul(x, y))
     return cc
 
+def minkowski_metric(features, p=1, features_compare=None, max=False):
 
-def minkowski_metric(x, y, p):
+    if isinstance(features, np.ndarray):
+        features = torch.from_numpy(features).type(Tensor)
+    if isinstance(features_compare, np.ndarray):
+        features_compare = torch.from_numpy(features_compare).type(Tensor)
 
-    distances = - (y - x[:, None])
-    distances = (distances ** p)
-    distances = np.sum(distances, axis=0)
-    # distances = (distances ** 1/p)
+    if features_compare is None:
+        features_compare = features
+
+    distances = torch.empty(features.shape[1], features_compare.shape[1])
+
+    if max is False:
+        for i in range(features.shape[1]):
+            distance = torch.pow(torch.abs(features[:, i].view(-1, 1) - features_compare), p)
+            distances[i, :] = distance.sum(0)
+    if max is True:
+        distance = torch.abs(features[:, i] - features_compare)
+        distances[i, :] = distance.max(0)
 
     return distances
+
+
+
+
+# def minkowski_metric(x, y, p):
+#
+#     distances = - (y - x[:, None])
+#     distances = (distances ** p)
+#     distances = np.sum(distances, axis=0)
+#     # distances = (distances ** 1/p)
+#
+#     return distances
 
 
 # def normalise_features(features):

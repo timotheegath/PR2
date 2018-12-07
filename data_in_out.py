@@ -162,12 +162,12 @@ def get_training_indexes():
     train_idxs = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['train_idx'])[
         'train_idx'].flatten()
 
-    return train_idxs
+    return train_idxs - 1
 
 def get_validation_indexes(number=100):
 
     _, g_t, _, ix = get_im_info(phase='validation', return_im=False)
-    return np.array(ix).flatten(), g_t
+    return np.array(ix).flatten() - 1, g_t
 
 
 
@@ -175,14 +175,14 @@ def get_validation_indexes(number=100):
 def get_query_indexes():
     query_idxs= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])['query_idx'].flatten()
 
-    return query_idxs
+    return query_idxs - 1
 
 
 def get_gallery_indexes():
     gal_idxs= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['gallery_idx'])[
         'gallery_idx'].flatten()
 
-    return gal_idxs
+    return gal_idxs - 1
 
 
 def get_cam_ids():
