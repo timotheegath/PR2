@@ -4,6 +4,7 @@ import torch
 import evaluation as eval
 import metrics
 import matplotlib.pyplot as plt
+from OPtim import mahalanobis_metric
 
 if torch.cuda.is_available():
     Tensor = torch.cuda.FloatTensor
@@ -69,7 +70,13 @@ if __name__ == '__main__':
 
     removal_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, ground_truth)
 
-    test_distances = metrics.minkowski_metric(query_features, p=2, features_compare=gallery_features)
+    # test_distances = metrics.minkowski_metric(query_features, p=2, features_compare=gallery_features)
+
+    parameters = torch.rand((training_features.shape[0], training_features.shape[0]), requires_grad=True)
+    parameters.data = torch.from_numpy(np.linalg.inv(np.cov(training_features))).type(Tensor)
+    parameters = torch.tril(parameters).view(-1)
+
+    test_distances = mahalanobis_metric(parameters, query_features, features_compare=gallery_features)
 
     rank = 10
     ranked_inds_test, _ = eval.rank(rank, test_distances.clone().detach().numpy(), gallery_indices, removal_mask=removal_mask)
@@ -78,15 +85,3 @@ if __name__ == '__main__':
     display_inds = np.array([456, 122, 186])
     io.display_ranklist(query_indices, ranked_inds_test, rank, 3, override_choice=display_inds)
 
-
-
-
-    # metrics.optimize_torch(features, training_indices, ground_truth, 1000)
-
-    # gallery_mask = eval.get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)
-    # distances_query = eval.KNN_classifier(features, gallery_indices, query_indices, gallery_mask)
-    # ranked_winners, ranked_distances = eval.rank(10, distances_query, gallery_indices)
-    # io.display_ranklist(query_indices, ranked_winners, 10, 3)
-    #
-    # l_score, score = eval.compute_score(10, ground_truth, ranked_winners, query_indices)
-    # print(l_score, score)

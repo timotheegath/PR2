@@ -88,18 +88,20 @@ def compute_mAP(rank, ground_truth, ranked_inds, query_inds):
 
     query_labels = ground_truth[query_inds]
     ranked_labels = ground_truth[ranked_inds[:, :rank]]
-    match_mask = ranked_labels == query_labels[:, None]
-    num_of_correct = np.sum((match_mask == 1).astype(np.uint8), axis=1)
 
+    match_mask = ranked_labels == query_labels[:, None]
+    query_correct = np.cumsum(match_mask.astype(np.uint8), axis=1)
+
+    num_of_correct = np.max(query_correct, axis=1)
     seen_imgs = np.arange(1, rank+1)
     seen_imgs = 1/seen_imgs
 
-    match_coordinates = np.argwhere(match_mask).transpose()
-
-    score_mask = np.copy(match_mask).astype(np.uint8)
-    score_mask[1 - match_mask] = 0
-    score_mask[match_coordinates[0], match_coordinates[1]] = match_coordinates[1]
-
+    # match_coordinates = np.argwhere(match_mask).transpose()
+    # score_mask = np.copy(match_mask).astype(np.uint8)
+    # score_mask[1 - match_mask] = 0
+    # score_mask[match_coordinates[0], match_coordinates[1]] = match_coordinates[1]
+    score_mask = np.copy(query_correct)
+    score_mask[match_mask == 0] = 0
     scores = score_mask * seen_imgs[None, :]
     query_scores = np.divide(np.sum(scores, axis=1), num_of_correct, out=np.zeros(num_of_correct.shape),
                              where=num_of_correct != 0)

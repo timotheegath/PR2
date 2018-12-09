@@ -156,23 +156,26 @@ def loss1(distances, labels, training_index, lagrangian):
 
 
 if __name__ == '__main__':
+
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     features = features.transpose()
-    labels = io.get_ground_truth()
+
     ground_truth = io.get_ground_truth()
     cam_ids = io.get_cam_ids()
 
     train_ind = io.get_training_indexes()
     training_features = features[:, train_ind]
-    training_labels = labels[train_ind]
-    values, counts = np.unique(training_labels, return_counts=True)
+    training_labels = ground_truth[train_ind]
+    # values, counts = np.unique(training_labels, return_counts=True)
 
     query_ind = io.get_query_indexes()
     query_features = features[:, query_ind]
-    query_labels = labels[query_ind]
+    query_labels = ground_truth[query_ind]
+
     gallery_ind = io.get_gallery_indexes()
     gallery_features = features[:, gallery_ind]
-    gallery_labels = labels[gallery_ind]
+    gallery_labels = ground_truth[gallery_ind]
+
     removal_mask = eval.get_to_remove_mask(cam_ids, query_ind, gallery_ind, ground_truth)
     # removal_mask = torch.from_numpy(removal_mask.astype(dtype=np.uint8))
 
