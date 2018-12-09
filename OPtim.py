@@ -176,10 +176,11 @@ if __name__ == '__main__':
     parameters.data = torch.from_numpy(np.linalg.inv(np.cov(features[:, train_ind]))* np.random.rand(features.shape[0], features.shape[0])).type(Tensor)
     sigma = torch.rand((features.shape[0],), requires_grad=True)
     sigma.data = (sigma.data+0.5) * 3000
-    batch_size = 2000
+    batch_size = 4000
     # lagrangian = torch.rand((train_ind.shape[0], train_ind.shape[0]), requires_grad=True).type(Tensor)
-    lagrangian = torch.rand((1,), requires_grad=True)
-    optimizer = torch.optim.SGD([parameters, sigma, lagrangian], lr=1)
+    lagrangian = torch.full((1,), 10, requires_grad=True)
+
+    optimizer = torch.optim.SGD([parameters, sigma], lr=1)
     # features = dare.normalise_features(torch.from_numpy(features)).type(Tensor)
 
 
@@ -209,7 +210,7 @@ if __name__ == '__main__':
 
         ranked_idx_train, _ = eval.rank(10, distances, train_ix)
         ranked_idx_test, _ = eval.rank(10, test_distances, gallery_ind, removal_mask=removal_mask)
-        score_by_query_t, total_score_t = eval.compute_score(10, ground_truth, ranked_idx_train, train_ix)
-        score_by_query, total_score = eval.compute_score(10, ground_truth, ranked_idx_test, query_ind)
+        total_score_t, _ = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ix)
+        total_score, _ = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
         print(loss)
         print(total_score_t, total_score)
