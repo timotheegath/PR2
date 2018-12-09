@@ -12,8 +12,10 @@ else:
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-def objective_function(parameters, features, labels = None, features_compare = None):
-    sigma = 2
+def objective_function(parameters, sigma, lagrangian, features, labels = None, features_compare = None):
+
+    denom = torch.sqrt((2 * sigma ** 2).unsqueeze(1))
+
     if isinstance(parameters, np.ndarray):
         parameters = torch.from_numpy(parameters).type(Tensor)
     if isinstance(features, np.ndarray):
@@ -24,18 +26,21 @@ def objective_function(parameters, features, labels = None, features_compare = N
         features_compare = torch.from_numpy(features_compare).type(Tensor)
 
     shape = features.shape[0]
-    L = parameters.view(shape, shape)
+    L = torch.mm(parameters.view(shape, shape),torch.eye(shape, shape)/denom)
+
     # print(features.shape, L.shape)
 
     class_values, class_counts = np.unique(labels, return_counts=True)
 
     L_features = torch.mm(L, features)
-    L_features_norm = (L_features**2).sum(0).view(1, -1)
+
+    L_features_norm = ((L_features**2)).sum(0).view(1, -1)
 
     if features_compare is not None:
         L_features_compare = torch.mm(L, features_compare)
+
         L_features_compare_t = torch.transpose(L_features_compare, 1, 0)
-        L_features_compare_norm = (L_features_compare**2).sum(0).view(-1, 1)
+        L_features_compare_norm = ((L_features_compare**2)).sum(0).view(-1, 1)
     else:
         L_features_compare_t = torch.transpose(L_features, 1, 0)
         L_features_compare_norm = L_features_norm.view(-1, 1)
@@ -43,23 +48,27 @@ def objective_function(parameters, features, labels = None, features_compare = N
     # L_features_norm_t = L_features_norm.view(-1, 1)
     # L_features_mm = torch.mm(L_features.transpose(1, 0), L_features)
     L_features_mm = torch.mm(L_features_compare_t, L_features)
-    # print(L_features.shape, L_features_norm.shape, L_features_norm_t.shape, L_features_mm.shape)
+    # print(L_features.shape, L_features_norm.shape, L_features_norm.shape, L_features_mm.shape)
     # print(parameters)
 
-    distances = 2 - 2*(torch.exp(-L_features_norm/(2*sigma**2)) *
-                       torch.exp(-L_features_compare_norm/(2*sigma**2)) *
-                       torch.exp(2*L_features_mm/(2*sigma**2)))
-
+    # distances = 2 - 2*(torch.exp(-(L_features_norm + L_features_compare_norm - 2*L_features_mm)/denom)) # RBF kernel
+    p = 2
+    distances = 2 - 2*(torch.exp(-(L_features_norm + L_features_compare_norm - 2*L_features_mm))) # RBF kernel
+    # distances = L_features_norm ** p + L_features_compare_norm ** p - 2*(L_features_mm ** p) #polynomial kernel
+    # print(distances)
+    # print((L_features_norm + L_features_compare_norm - 2*L_features_mm)/denom)
     if features_compare is not None:
         return distances.transpose(1, 0)
 
     else:
         distances = distances - torch.diag(distances.diag())
         label_mask = labels.view(1, -1) == labels.view(-1, 1)
-        Dw = torch.masked_select(distances, label_mask)
+        Dw = torch.masked_select(distances, label_mask) - 0.1
         Db = torch.masked_select(distances, 1 - label_mask)
-        objective = torch.sum(Dw) - torch.sum(Db)
-    return objective, distances
+
+        # lagrangian = torch.masked_select(lagrangian, 1 - label_mask)
+        objective = lagrangian*torch.sum(Dw) - torch.sum(torch.sqrt(Db))
+    return objective, distances.clone().detach().cpu().numpy()
 
 
 def optim_call(parameters):
@@ -150,9 +159,9 @@ if __name__ == '__main__':
     ground_truth = io.get_ground_truth()
     cam_ids = io.get_cam_ids()
 
-    train_ind = io.get_training_indexes() - 1
+    train_ind = io.get_training_indexes()
 
-    values, counts = np.unique(training_labels, return_counts=True)
+    # values, counts = np.unique(training_labels, return_counts=True)
 
     query_ind = io.get_query_indexes()
     query_features = features[:, query_ind]
@@ -163,27 +172,44 @@ if __name__ == '__main__':
     removal_mask = eval.get_to_remove_mask(cam_ids, query_ind, gallery_ind, ground_truth)
     # removal_mask = torch.from_numpy(removal_mask.astype(dtype=np.uint8))
 
-    parameters = torch.ones((features.shape[0], features.shape[0]), requires_grad=True)
-    optimizer = torch.optim.Adam([parameters], lr=0.1)
+    parameters = torch.rand((features.shape[0], features.shape[0]), requires_grad=True)
+    parameters.data = torch.from_numpy(np.linalg.inv(np.cov(features[:, train_ind]))* np.random.rand(features.shape[0], features.shape[0])).type(Tensor)
+    sigma = torch.rand((features.shape[0],), requires_grad=True)
+    sigma.data = (sigma.data+0.5) * 3000
+    batch_size = 2000
+    # lagrangian = torch.rand((train_ind.shape[0], train_ind.shape[0]), requires_grad=True).type(Tensor)
+    lagrangian = torch.rand((1,), requires_grad=True)
+    optimizer = torch.optim.SGD([parameters, sigma, lagrangian], lr=1)
+    # features = dare.normalise_features(torch.from_numpy(features)).type(Tensor)
 
-    batch_size = 200
+
     for it in range(500):
-        temp_index = np.copy(train_ind)
+
+        sigma_ = torch.clamp(sigma, min=0.001)
+        # print('Sigma: ', sigma_)
+        temp_index = np.arange(0, train_ind.shape[0]).astype(np.int32)
+
         np.random.shuffle(temp_index)
         temp_index = temp_index[:batch_size]
-        training_features = features[:, temp_index]
-        training_labels = labels[temp_index]
+        train_ix = train_ind[temp_index].astype(np.int32)
+        # lagrangian_ = lagrangian[temp_index, temp_index]
+        training_features = torch.from_numpy(features[:, train_ix]).type(Tensor)
+
+        training_labels = labels[train_ix]
         parameters_ = torch.tril(parameters).view(-1)
-        loss, distances = objective_function(parameters_, training_features, labels=training_labels)
+        loss, distances = objective_function(parameters_, sigma_, lagrangian, training_features, labels=training_labels)
+
         optimizer.zero_grad()
+        training_features.cpu()
+        torch.cuda.empty_cache()
         loss.backward()
         optimizer.step()
+        with torch.no_grad():
+            test_distances = objective_function(parameters_, sigma_, lagrangian, query_features, features_compare=gallery_features)
 
-        test_distances = objective_function(parameters_, query_features, features_compare=gallery_features )
-
-        ranked_idx_train, _ = eval.rank(10, distances.clone().detach(), temp_index)
-        ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().numpy(), gallery_ind, removal_mask=removal_mask)
-        score_by_query_t, total_score_t = eval.compute_score(10, ground_truth, ranked_idx_train, temp_index)
+        ranked_idx_train, _ = eval.rank(10, distances, train_ix)
+        ranked_idx_test, _ = eval.rank(10, test_distances, gallery_ind, removal_mask=removal_mask)
+        score_by_query_t, total_score_t = eval.compute_score(10, ground_truth, ranked_idx_train, train_ix)
         score_by_query, total_score = eval.compute_score(10, ground_truth, ranked_idx_test, query_ind)
         print(loss)
         print(total_score_t, total_score)
