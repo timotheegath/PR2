@@ -133,7 +133,9 @@ def poly_Maha(parameters, features, features_compare=None):
 
 def objective_function(parameters, lagrangian, features, labels = None, features_compare = None, kernel=None):
     if kernel is not None:
-        param2 = parameters[1]
+        min_distance = 0.2
+    else:
+        min_distance = 1
 
     if isinstance(parameters[0], np.ndarray):
         parameters[0] = torch.from_numpy(parameters[0]).type(Tensor)
@@ -159,10 +161,10 @@ def objective_function(parameters, lagrangian, features, labels = None, features
 
     distances = distances - torch.diag(distances.diag())
     label_mask = labels.view(1, -1) == labels.view(-1, 1)
-    Dw = torch.masked_select(distances, label_mask) - 0.5
+    Dw = torch.masked_select(distances, label_mask) - min_distance
     Db = torch.masked_select(distances, 1 - label_mask)
 
-    # lagrangian = torch.masked_select(lagrangian, 1 - label_mask)
+
     objective = lagrangian*torch.sum(Dw) - torch.sum(torch.sqrt(Db))
     return objective, distances.clone().detach().cpu().numpy()
 
@@ -238,42 +240,46 @@ if __name__ == '__main__':
     lagrangian = torch.full((1,), 1, requires_grad=True)
 
     optimizer = torch.optim.SGD(parameters, lr=10)
+    recorder = io.Recorder('loss', 'test_mAp', 'train_mAp', 'parameters')
+    for it in range(1000):
+        try:
+            if BATCHIFY:
+                temp_index = np.arange(0, train_ind.shape[0]).astype(np.int32)
 
-    for it in range(500):
+                np.random.shuffle(temp_index)
+                temp_index = temp_index[:BATCH_SIZE]
+                train_ix = train_ind[temp_index].astype(np.int32)
+                training_features = torch.from_numpy(features[:, train_ix]).type(Tensor)
 
-        if BATCHIFY:
-            temp_index = np.arange(0, train_ind.shape[0]).astype(np.int32)
-
-            np.random.shuffle(temp_index)
-            temp_index = temp_index[:BATCH_SIZE]
-            train_ix = train_ind[temp_index].astype(np.int32)
-            training_features = torch.from_numpy(features[:, train_ix]).type(Tensor)
-
-            training_labels = ground_truth[train_ix]
-        else:
-            train_ix = train_ind
-
-        parameters[0].data = torch.tril(parameters[0]).data
-
-        loss, distances = objective_function(parameters, lagrangian, training_features, labels=training_labels, kernel=KERNEL)
-        optimizer.zero_grad()
-        training_features.cpu()
-        torch.cuda.empty_cache()
-        loss.backward()
-        optimizer.step()
-        with torch.no_grad():
-            if KERNEL is 'RBF':
-                test_distances = gaussian_Maha(parameters, query_features, features_compare=gallery_features)
-            elif KERNEL is 'poly':
-                test_distances = poly_Maha(parameters, query_features, features_compare=gallery_features)
+                training_labels = ground_truth[train_ix]
             else:
-                test_distances = mahalanobis_metric(parameters, query_features, features_compare=gallery_features)
-            ranked_idx_train, _ = eval.rank(10, distances, train_ix)
-            ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().cpu().numpy(), gallery_ind, removal_mask=removal_mask)
+                train_ix = train_ind
 
-            total_score_t, query_scores_t = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ix)
-            total_score, query_scores = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
+            parameters[0].data = torch.tril(parameters[0]).data
 
-        print(loss)
-        print(total_score_t, total_score)
+            loss, distances = objective_function(parameters, lagrangian, training_features, labels=training_labels, kernel=KERNEL)
+            optimizer.zero_grad()
+            training_features.cpu()
+            torch.cuda.empty_cache()
+            loss.backward()
+            optimizer.step()
+            with torch.no_grad():
+                if KERNEL is 'RBF':
+                    test_distances = gaussian_Maha(parameters, query_features, features_compare=gallery_features)
+                elif KERNEL is 'poly':
+                    test_distances = poly_Maha(parameters, query_features, features_compare=gallery_features)
+                else:
+                    test_distances = mahalanobis_metric(parameters, query_features, features_compare=gallery_features)
+                ranked_idx_train, _ = eval.rank(10, distances, train_ix)
+                ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().cpu().numpy(), gallery_ind, removal_mask=removal_mask)
+
+                total_score_t, query_scores_t = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ix)
+                total_score, query_scores = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
+            recorder.update(loss=loss, test_mAp=total_score, train_mAp=total_score_t, parameters=parameters)
+            recorder.save('Test')
+            print(loss)
+            print(total_score_t, total_score)
+        except KeyboardInterrupt:
+            break
+
 

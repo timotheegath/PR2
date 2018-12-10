@@ -1,11 +1,33 @@
 import numpy as np
 import json
-from scipy.io import loadmat
+from scipy.io import loadmat, savemat
 import cv2
 import os.path
 
 NUMBER_PEOPLE = 1360
 IMAGE_SIZE = (293, 100)
+class Recorder():
+
+    def __init__(self, *args):
+        self.memory = {}
+        self.keys = []
+        for a in args:
+            self.keys.append(a)
+            self.memory[a] = []
+
+    def update(self, **kwargs):
+        for key in kwargs:
+            if key not in self.keys:
+                print('Recorder: Key not recognised')
+            self.memory[key].append(kwargs[key])
+
+    def save(self, name):
+        savemat('Results/' + name, self.memory)
+
+
+
+
+
 def load_features():
 
     with open('PR_data/feature_data.json', 'r') as f:
