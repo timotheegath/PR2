@@ -65,6 +65,7 @@ if __name__ == '__main__':
     query_labels = ground_truth[query_indices]
 
     gallery_indices = io.get_gallery_indexes()
+
     gallery_features = features[:, gallery_indices]
     gallery_labels = ground_truth[gallery_indices]
 
@@ -77,6 +78,7 @@ if __name__ == '__main__':
     parameters = torch.tril(parameters).view(-1)
 
     test_distances = mahalanobis_metric(parameters, query_features, features_compare=gallery_features)
+
 
     rank = 10
     ranked_inds_test, _ = eval.rank(rank, test_distances.clone().detach().numpy(), gallery_indices, removal_mask=removal_mask)

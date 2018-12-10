@@ -162,12 +162,16 @@ def get_training_indexes():
     train_idxs = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['train_idx'])[
         'train_idx'].flatten()
 
+
     return train_idxs - 1
+
 
 def get_validation_indexes(number=100):
 
     _, g_t, _, ix = get_im_info(phase='validation', return_im=False)
+
     return np.array(ix).flatten() - 1, g_t
+
 
 
 
