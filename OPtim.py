@@ -159,7 +159,7 @@ def objective_function(parameters, lagrangian, features, labels = None, features
 
     distances = distances - torch.diag(distances.diag())
     label_mask = labels.view(1, -1) == labels.view(-1, 1)
-    Dw = torch.masked_select(distances, label_mask) - 0.1
+    Dw = torch.masked_select(distances, label_mask) - 0.5
     Db = torch.masked_select(distances, 1 - label_mask)
 
     # lagrangian = torch.masked_select(lagrangian, 1 - label_mask)
@@ -196,7 +196,7 @@ def constraint_distances(features):
 if __name__ == '__main__':
     BATCHIFY = True
     KERNEL = 'RBF'
-    batch_size = 2000
+    BATCH_SIZE = 2000
     # Feature loading
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     features = features.transpose()
@@ -235,28 +235,25 @@ if __name__ == '__main__':
 
 
 
-    lagrangian = torch.full((1,), 10, requires_grad=True)
+    lagrangian = torch.full((1,), 1, requires_grad=True)
 
-    optimizer = torch.optim.Adagrad(parameters, lr=2)
+    optimizer = torch.optim.SGD(parameters, lr=10)
 
     for it in range(500):
 
-
-        # print('Sigma: ', sigma_)
         if BATCHIFY:
             temp_index = np.arange(0, train_ind.shape[0]).astype(np.int32)
 
             np.random.shuffle(temp_index)
-            temp_index = temp_index[:batch_size]
+            temp_index = temp_index[:BATCH_SIZE]
             train_ix = train_ind[temp_index].astype(np.int32)
-            # lagrangian_ = lagrangian[temp_index, temp_index]
             training_features = torch.from_numpy(features[:, train_ix]).type(Tensor)
 
             training_labels = ground_truth[train_ix]
         else:
             train_ix = train_ind
 
-        parameters[0] = torch.tril(parameters[0])
+        parameters[0].data = torch.tril(parameters[0]).data
 
         loss, distances = objective_function(parameters, lagrangian, training_features, labels=training_labels, kernel=KERNEL)
         optimizer.zero_grad()
@@ -279,4 +276,4 @@ if __name__ == '__main__':
 
         print(loss)
         print(total_score_t, total_score)
-        # print('p:', sigma)
+
