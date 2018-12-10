@@ -1,5 +1,6 @@
 # Big files
 PR_data
+results/*.mat
 
 #LateX
 ## Core latex/pdflatex auxiliary files:
