@@ -138,7 +138,8 @@ def poly_Maha(parameters, features, features_compare=None):
     return distances.transpose(1, 0)
 
 
-def objective_function(parameters, lagrangian, features, labels = None, features_compare = None, kernel=None):
+def objective_function(parameters, lagrangian, features, slack = 0, labels = None, features_compare = None, kernel=None):
+
     if kernel is not None:
         min_distance = 0.1
     else:
@@ -164,8 +165,7 @@ def objective_function(parameters, lagrangian, features, labels = None, features
     else:
         distances = mahalanobis_metric(parameters, features, features_compare=None)
 
-
-    objective = lossA(distances, labels)
+    objective = lossC(distances, labels, lagrangian, slack)
 
     return objective, distances.clone().detach().cpu().numpy()
 
@@ -179,6 +179,34 @@ def lossA(distances, labels):
     return objective, distances.clone().detach().cpu().numpy()
 
 
+
+def lossC(distances, labels, l, slack):
+    distances = distances - torch.diag(distances.diag())
+    label_mask = labels.view(1, -1) == labels.view(-1, 1)
+    constraint = torch.zeros((1,))
+    chosen_rows = np.arange(0, distances.shape[0])
+    np.random.shuffle(chosen_rows)
+    chosen_rows = chosen_rows[:min(100, distances.shape[0])].tolist()
+    for i in chosen_rows:
+
+        same_label_candidates = torch.masked_select(distances[i, :],  label_mask[i, :])
+        different_label_candidates = torch.masked_select(distances[i, :],  1 - label_mask[i, :])
+        try:
+            pair = different_label_candidates[0] - same_label_candidates[0]
+            constraint += pair - 1 - slack
+        except IndexError:
+
+            pass
+    # Transform maximisation into minimisation
+
+    constraint = constraint
+
+    same_distances = torch.masked_select(distances, label_mask)
+
+    loss = torch.sum(same_distances) - l*constraint
+
+
+    return loss
 
 def optim_call(parameters):
 
@@ -209,6 +237,7 @@ if __name__ == '__main__':
     BATCHIFY = True
     KERNEL = 'RBF'
     BATCH_SIZE = 2000
+    SKIP_STEP = 5
     # Feature loading
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     features = features.transpose()
@@ -229,14 +258,17 @@ if __name__ == '__main__':
     gallery_ind = io.get_gallery_indexes()
     gallery_features = features[:, gallery_ind]
     gallery_labels = ground_truth[gallery_ind]
+    test_removal_mask = eval.get_to_remove_mask(cam_ids, query_ind, gallery_ind, ground_truth)
 
-    removal_mask = eval.get_to_remove_mask(cam_ids, query_ind, gallery_ind, ground_truth)
 
     parameters = []
     # PARAMETERS DEFINITION
     matrix = torch.zeros((features.shape[0], features.shape[0]), requires_grad=True)
 
-    matrix.data = (torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind])))).type(Tensor))
+    matrix.data = (torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(Tensor))
+    # matrix = torch.eye(features.shape[0], requires_grad=True)
+    # matrix.data = torch.tril(matrix)
+
     print(matrix)
 
     parameters.append(matrix)
@@ -245,19 +277,25 @@ if __name__ == '__main__':
         # param2 = torch.rand((features.shape[0],), requires_grad=True)
         param2 = torch.rand((1,), requires_grad=True)
         # param2.data = (param2.data+0.5) * 1000
-        param2.data = torch.full((1,), 1000)
+        param2.data = torch.full((1,), 300)
         parameters.append(param2)
     elif KERNEL is 'poly':
-        param2 = torch.full((1,), 1, requires_grad=True)
+        param2 = torch.full((1,), 0.1, requires_grad=True)
         parameters.append(param2)
 
     lagrangian = torch.full((1,), 1, requires_grad=True)
 
 
-    optimizer = torch.optim.ASGD(parameters, lr=0.001)
+    slack = torch.full((1,), 0.5, requires_grad=True)
+    lagrangian = torch.full((1,), 1, requires_grad=True)
+    # parameters.append(lagrangian)
+    parameters.append(slack)
+    optimizer = torch.optim.ASGD(parameters, lr=1)
+
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp', 'parameters')
     for it in range(1000):
-        try:
+        m_loss = 0
+        for _ in range(SKIP_STEP):
             if BATCHIFY:
                 temp_index = np.arange(0, train_ind.shape[0]).astype(np.int32)
 
@@ -270,37 +308,39 @@ if __name__ == '__main__':
             else:
                 train_ix = train_ind
 
-            parameters[0].data = torch.tril(parameters[0]).data
-
-            loss, distances = objective_function(parameters, lagrangian, training_features, labels=training_labels, kernel=KERNEL)
-
+            loss, distances = objective_function([torch.triu(parameters[0]), parameters[1]], lagrangian, training_features, labels=training_labels, kernel=KERNEL)
+            m_loss += loss.clone().detach().cpu().numpy()/SKIP_STEP
             training_features.cpu()
             torch.cuda.empty_cache()
+            # print(distances)
 
             loss.backward()
-            if not BATCHIFY & (it % 5 != 0):
-                if it != 0:
-                    optimizer.step()
 
-                    print('Optimized')
-                    optimizer.zero_grad()
-            with torch.no_grad():
-                if KERNEL is 'RBF':
-                    test_distances = gaussian_Maha(parameters, query_features, features_compare=gallery_features)
-                elif KERNEL is 'poly':
-                    test_distances = poly_Maha(parameters, query_features, features_compare=gallery_features)
-                else:
-                    test_distances = mahalanobis_metric(parameters, query_features, features_compare=gallery_features)
-                print((test_distances==2).any())
-                print('sigma', param2)
-                ranked_idx_train, _ = eval.rank(10, distances, train_ix)
-                ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().cpu().numpy(), gallery_ind, removal_mask=removal_mask)
+        if not it == 0:
+            optimizer.step()
+            # parameters[0].data = torch.triu(parameters[0]).data
+            print('parameters', parameters[0])
+            print('Optimized')
+            optimizer.zero_grad()
+        with torch.no_grad():
+            if KERNEL is 'RBF':
+                test_distances = gaussian_Maha(parameters, query_features, features_compare=gallery_features)
+            elif KERNEL is 'poly':
+                test_distances = poly_Maha(parameters, query_features, features_compare=gallery_features)
+            else:
+                test_distances = mahalanobis_metric(parameters, query_features, features_compare=gallery_features)
+            removal_mask = eval.get_to_remove_mask(cam_ids, train_ix, train_ix, ground_truth)
+            ranked_idx_train, _ = eval.rank(10, distances, train_ix, removal_mask=removal_mask)
 
-                total_score_t, query_scores_t = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ix)
-                total_score, query_scores = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
-            recorder.update(loss=loss, test_mAp=total_score, train_mAp=total_score_t, parameters=parameters)
-            recorder.save('Test')
-            print(loss)
-            print(total_score_t, total_score)
-        except KeyboardInterrupt:
-            break
+            ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().cpu().numpy(), gallery_ind, removal_mask=test_removal_mask)
+
+            total_score_t, query_scores_t = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ix)
+            total_score, query_scores = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
+        recorder.update('RBF_cov-init_lagrag_lr1_test', loss=m_loss, test_mAp=total_score, train_mAp=total_score_t, parameters=parameters)
+
+        print(m_loss)
+        print('sigma', param2)
+        print('lagrangian', lagrangian)
+        print(total_score_t, total_score)
+
+
