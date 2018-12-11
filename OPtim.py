@@ -65,9 +65,10 @@ def gaussian_Maha(parameters, features, features_compare=None):
         features_compare = torch.from_numpy(features_compare).type(Tensor)
     sigma = parameters[1]
     shape = features.shape[0]
-    denom = torch.sqrt((2 * sigma ** 2).unsqueeze(1))
-    L = torch.mm(parameters[0].view(shape, shape), torch.eye(shape, shape) / denom)
-
+    denom = 2 * sigma**2
+    # denom = torch.sqrt((2 * sigma ** 2).unsqueeze(1))
+    # L = torch.mm(parameters[0].view(shape, shape), torch.eye(shape, shape) / denom)
+    L = parameters[0].view(shape, shape)
     L_features = torch.mm(L, features)
 
     L_features_norm = (L_features ** 2).sum(0).view(1, -1)
@@ -87,8 +88,11 @@ def gaussian_Maha(parameters, features, features_compare=None):
         L_features_compare_norm = L_features_norm.view(-1, 1)
 
     L_features_mm = torch.mm(L_features_compare_t, L_features)
-    distances = 2 - 2 * (torch.exp(-(L_features_norm + L_features_compare_norm - 2 * L_features_mm)))  # RBF kernel
+    # distances = 2 - 2 * (torch.exp(-(L_features_norm + L_features_compare_norm - 2 * L_features_mm)))  # RBF kernel
+    distances = 2 - 2 * (torch.exp(-(L_features_norm + L_features_compare_norm - 2 * L_features_mm)/denom))  # RBF kernel
+
     if features_compare is None:
+
         distances = distances - torch.diag(distances.diag())
 
     return distances.transpose(1, 0)
@@ -136,7 +140,7 @@ def poly_Maha(parameters, features, features_compare=None):
 
 def objective_function(parameters, lagrangian, features, labels = None, features_compare = None, kernel=None):
     if kernel is not None:
-        min_distance = 0.2
+        min_distance = 0.1
     else:
         min_distance = 1
 
@@ -161,15 +165,19 @@ def objective_function(parameters, lagrangian, features, labels = None, features
         distances = mahalanobis_metric(parameters, features, features_compare=None)
 
 
+    objective = lossA(distances, labels)
 
+    return objective, distances.clone().detach().cpu().numpy()
+
+def lossA(distances, labels):
     distances = distances - torch.diag(distances.diag())
     label_mask = labels.view(1, -1) == labels.view(-1, 1)
-    Dw = torch.masked_select(distances, label_mask) - min_distance
+    Dw = torch.masked_select(distances, label_mask) - 1
     Db = torch.masked_select(distances, 1 - label_mask)
-
 
     objective = lagrangian*torch.sum(Dw) - torch.sum(torch.sqrt(Db))
     return objective, distances.clone().detach().cpu().numpy()
+
 
 
 def optim_call(parameters):
@@ -227,21 +235,26 @@ if __name__ == '__main__':
     parameters = []
     # PARAMETERS DEFINITION
     matrix = torch.zeros((features.shape[0], features.shape[0]), requires_grad=True)
-    matrix.data = torch.from_numpy(np.linalg.inv(np.cov(features[:, train_ind])) * np.random.rand(features.shape[0], features.shape[0])).type(Tensor)
+
+    matrix.data = (torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind])))).type(Tensor))
+    print(matrix)
+
     parameters.append(matrix)
     # For gaussian kernel
     if KERNEL is 'RBF':
-        param2 = torch.rand((features.shape[0],), requires_grad=True)
-        param2.data = (param2.data+0.5) * 3000
+        # param2 = torch.rand((features.shape[0],), requires_grad=True)
+        param2 = torch.rand((1,), requires_grad=True)
+        # param2.data = (param2.data+0.5) * 1000
+        param2.data = torch.full((1,), 1000)
         parameters.append(param2)
     elif KERNEL is 'poly':
         param2 = torch.full((1,), 1, requires_grad=True)
         parameters.append(param2)
 
-
     lagrangian = torch.full((1,), 1, requires_grad=True)
 
-    optimizer = torch.optim.SGD(parameters, lr=10)
+
+    optimizer = torch.optim.ASGD(parameters, lr=0.001)
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp', 'parameters')
     for it in range(1000):
         try:
@@ -260,11 +273,17 @@ if __name__ == '__main__':
             parameters[0].data = torch.tril(parameters[0]).data
 
             loss, distances = objective_function(parameters, lagrangian, training_features, labels=training_labels, kernel=KERNEL)
-            optimizer.zero_grad()
+
             training_features.cpu()
             torch.cuda.empty_cache()
+
             loss.backward()
-            optimizer.step()
+            if not BATCHIFY & (it % 5 != 0):
+                if it != 0:
+                    optimizer.step()
+
+                    print('Optimized')
+                    optimizer.zero_grad()
             with torch.no_grad():
                 if KERNEL is 'RBF':
                     test_distances = gaussian_Maha(parameters, query_features, features_compare=gallery_features)
@@ -272,6 +291,8 @@ if __name__ == '__main__':
                     test_distances = poly_Maha(parameters, query_features, features_compare=gallery_features)
                 else:
                     test_distances = mahalanobis_metric(parameters, query_features, features_compare=gallery_features)
+                print((test_distances==2).any())
+                print('sigma', param2)
                 ranked_idx_train, _ = eval.rank(10, distances, train_ix)
                 ranked_idx_test, _ = eval.rank(10, test_distances.clone().detach().cpu().numpy(), gallery_ind, removal_mask=removal_mask)
 

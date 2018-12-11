@@ -3,6 +3,8 @@ import json
 from scipy.io import loadmat, savemat
 import cv2
 import os.path
+import torch
+import collections
 
 NUMBER_PEOPLE = 1360
 IMAGE_SIZE = (293, 100)
@@ -17,14 +19,35 @@ class Recorder():
             self.keys.append(a)
             self.memory[a] = []
 
-    def update(self, **kwargs):
+    def update(self, name, **kwargs):
+        try:
+            existing = loadmat(name)
+        except FileNotFoundError:
+            existing = self.memory
+
         for key in kwargs:
+            if isinstance(kwargs[key], collections.Iterable):
+                tosave = []
+                for p in kwargs[key]:
+                    if isinstance(p, torch.Tensor):
+                        tosave.append(p.clone().detach().cpu().numpy())
+
+                    else:
+                        tosave.append(p)
+
+            elif isinstance(kwargs[key], torch.Tensor):
+                tosave = kwargs[key].clone().detach().cpu().numpy()
+            else:
+                tosave = kwargs[key]
+
+            existing[key].append(tosave)
             if key not in self.keys:
                 print('Recorder: Key not recognised')
-            self.memory[key].append(kwargs[key])
+            savemat('Results/' + name, existing)
 
-    def save(self, name):
-        savemat('Results/' + name, self.memory)
+
+
+
 
 
 
