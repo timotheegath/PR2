@@ -162,17 +162,18 @@ def objective_function(parameters, lagrangian, features, labels = None, features
         distances = mahalanobis_metric(parameters, features, features_compare=None)
 
 
+    objective = lossA(distances, labels)
 
-    distances = distances - torch.diag(distances.diag())
-    label_mask = labels.view(1, -1) == labels.view(-1, 1)
-    Dw = torch.masked_select(distances, label_mask) - min_distance
-    Db = torch.masked_select(distances, 1 - label_mask)
-
-
-    objective = lagrangian*torch.sum(Dw) - torch.sum(torch.sqrt(Db))
     return objective, distances.clone().detach().cpu().numpy()
 
+def lossA(distances, labels):
+    distances = distances - torch.diag(distances.diag())
+    label_mask = labels.view(1, -1) == labels.view(-1, 1)
+    Dw = torch.masked_select(distances, label_mask) - 1
+    Db = torch.masked_select(distances, 1 - label_mask)
 
+    objective = lagrangian * torch.sum(Dw) - torch.sum(torch.sqrt(Db))
+    return objective
 
 def optim_call(parameters):
 
