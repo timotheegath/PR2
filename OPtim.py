@@ -13,7 +13,7 @@ else:
 # ----------------------------------------------------------------------------------------------------------------------
 
 def mahalanobis_metric(parameters, features, features_compare = None):
-    parameters = parameters[0]
+
     if isinstance(parameters, np.ndarray):
         parameters = torch.from_numpy(parameters).type(Tensor)
     if isinstance(features, np.ndarray):
@@ -24,7 +24,8 @@ def mahalanobis_metric(parameters, features, features_compare = None):
 
     shape = features.shape[0]
 
-    L = parameters.view(shape, shape)
+    # L = parameters.view(shape, shape)
+    L = parameters
 
     L_features = torch.mm(L, features)
 
@@ -96,6 +97,7 @@ def gaussian_Maha(parameters, features, features_compare=None):
 
     return distances.transpose(1, 0)
 
+
 def poly_Maha(parameters, features, features_compare=None):
 
     if isinstance(parameters[0], np.ndarray):
@@ -135,7 +137,9 @@ def poly_Maha(parameters, features, features_compare=None):
 
     return distances.transpose(1, 0)
 
+
 def objective_function(parameters, lagrangian, features, slack = 0, labels = None, features_compare = None, kernel=None):
+
     if kernel is not None:
         min_distance = 0.1
     else:
@@ -171,8 +175,10 @@ def lossA(distances, labels):
     Dw = torch.masked_select(distances, label_mask) - 1
     Db = torch.masked_select(distances, 1 - label_mask)
 
-    objective = torch.sum(Dw) - torch.sum(torch.sqrt(Db))
-    return objective
+    objective = lagrangian*torch.sum(Dw) - torch.sum(torch.sqrt(Db))
+    return objective, distances.clone().detach().cpu().numpy()
+
+
 
 def lossC(distances, labels, l, slack):
     distances = distances - torch.diag(distances.diag())
@@ -238,6 +244,7 @@ if __name__ == '__main__':
 
     ground_truth = io.get_ground_truth()
     cam_ids = io.get_cam_ids()
+
     train_ind = io.get_training_indexes()
     if not BATCHIFY:
 
@@ -257,10 +264,13 @@ if __name__ == '__main__':
     parameters = []
     # PARAMETERS DEFINITION
     matrix = torch.zeros((features.shape[0], features.shape[0]), requires_grad=True)
+
     matrix.data = (torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(Tensor))
     # matrix = torch.eye(features.shape[0], requires_grad=True)
     # matrix.data = torch.tril(matrix)
+
     print(matrix)
+
     parameters.append(matrix)
     # For gaussian kernel
     if KERNEL is 'RBF':
@@ -273,12 +283,15 @@ if __name__ == '__main__':
         param2 = torch.full((1,), 0.1, requires_grad=True)
         parameters.append(param2)
 
+    lagrangian = torch.full((1,), 1, requires_grad=True)
+
 
     slack = torch.full((1,), 0.5, requires_grad=True)
     lagrangian = torch.full((1,), 1, requires_grad=True)
     # parameters.append(lagrangian)
     parameters.append(slack)
     optimizer = torch.optim.ASGD(parameters, lr=1)
+
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp', 'parameters')
     for it in range(1000):
         m_loss = 0
@@ -295,8 +308,6 @@ if __name__ == '__main__':
             else:
                 train_ix = train_ind
 
-
-
             loss, distances = objective_function([torch.triu(parameters[0]), parameters[1]], lagrangian, training_features, labels=training_labels, kernel=KERNEL)
             m_loss += loss.clone().detach().cpu().numpy()/SKIP_STEP
             training_features.cpu()
@@ -304,6 +315,7 @@ if __name__ == '__main__':
             # print(distances)
 
             loss.backward()
+
         if not it == 0:
             optimizer.step()
             # parameters[0].data = torch.triu(parameters[0]).data
@@ -330,6 +342,5 @@ if __name__ == '__main__':
         print('sigma', param2)
         print('lagrangian', lagrangian)
         print(total_score_t, total_score)
-
 
 

@@ -8,6 +8,8 @@ import collections
 
 NUMBER_PEOPLE = 1360
 IMAGE_SIZE = (293, 100)
+
+
 class Recorder():
 
     def __init__(self, *args):
