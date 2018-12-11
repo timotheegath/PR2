@@ -63,11 +63,15 @@ class BilinearSimilarity():
             x = x.unsqueeze(1)
             y = y.unsqueeze(1)
         if self.cosine:
-            Kcos = torch.mm(x.transpose(), y)
-            Kcos /= (torch.norm(x, 2) * torch.norm(y, 2))
+            Kcos = torch.mm(x.transpose(1, 0), y)
+            x_norm = torch.norm(x, 2, dim=1, keepdim=True)
+            y_norm = torch.norm(y, 2, dim=1, keepdim=True)
+            cross_norm_matrix = torch.mm(x_norm.transpose(1, 0), y_norm)
+            Kcos /= cross_norm_matrix
             return Kcos
         else:
-            Km = torch.mm(torch.mm(x.transpose, self.bilinear_matrix), y)
+            Km = torch.mm(torch.mm(x.transpose(1, 0), self.bilinear_matrix), y)
+            print(Km.shape)
             return Km
 
 class Mahalanobis():
@@ -90,14 +94,33 @@ class Mahalanobis():
 
         return distances
 
-def cross_correlation(x, y):
+# def cross_correlation(x, y):
+#
+#     if isinstance(x, np.ndarray):
+#         x = torch.from_numpy(x).type(Tensor)
+#         y = torch.from_numpy(y).type(Tensor)
+#
+#     cc = torch.sum(torch.mul(x, y))
+#     return cc
 
-    if isinstance(x, np.ndarray):
-        x = torch.from_numpy(x).type(Tensor)
-        y = torch.from_numpy(y).type(Tensor)
+def cross_correlation(features, features_compare=None):
 
-    cc = torch.sum(torch.mul(x, y))
-    return cc
+    if isinstance(features, np.ndarray):
+        features = torch.from_numpy(features).type(Tensor)
+    if isinstance(features_compare, np.ndarray):
+        features_compare = torch.from_numpy(features_compare).type(Tensor)
+
+    if features_compare is None:
+        features_compare = features
+
+    features_norm = features/torch.norm(features, 2, dim=1, keepdim=True)
+    features_compare_norm = features_compare/torch.norm(features_compare, 2, dim=1, keepdim=True)
+
+    distances = torch.mm(features_norm.transpose(1, 0), features_compare_norm)
+    print(distances.shape)
+    return distances
+
+
 
 def minkowski_metric(features, p=1, features_compare=None, max=False):
 

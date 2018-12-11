@@ -43,7 +43,7 @@ def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
     return query_distances
 
 
-def rank(r, distance_array, gallery_indexes, removal_mask=None):
+def rank(r, distance_array, gallery_indexes, removal_mask=None, flip=False):
     # expect distance_array query_images X gallery_images, numpy masked array
 
     if removal_mask is not None:
@@ -53,8 +53,18 @@ def rank(r, distance_array, gallery_indexes, removal_mask=None):
         distance_array_m = np.ma.masked_where(removal_mask, distance_array)
     else:
         distance_array_m = distance_array
-    ranked_winners = np.argsort(distance_array_m, axis=1)[:, :r]  # sort from smaller to bigger
-    ranked_distances = np.sort(distance_array_m, axis=1)[:, :r]
+
+    if flip is False:
+        ranked_winners = np.argsort(distance_array_m, axis=1)   # sort from smaller to bigger
+        ranked_distances = np.sort(distance_array_m, axis=1)
+
+    if flip is True:
+        ranked_winners = np.argsort(distance_array_m*(-1), axis=1)
+        ranked_distances = - np.sort(distance_array_m*(-1), axis=1)
+
+    ranked_winners = ranked_winners[:, :r]
+    ranked_distances = ranked_distances[:, :r]
+
     ranked_winners_true_ix = gallery_indexes[ranked_winners]
     return ranked_winners_true_ix, ranked_distances
 
@@ -83,30 +93,6 @@ def compute_score(rank, ground_truth, winner_indexes, query_indexes):
 
     return score_by_query, total_score
 
-def compute_mAP(rank, ground_truth, ranked_inds, query_inds):
-
-    query_labels = ground_truth[query_inds]
-    ranked_labels = ground_truth[ranked_inds[:, :rank]]
-
-    match_mask = ranked_labels == query_labels[:, None]
-    query_correct = np.cumsum(match_mask.astype(np.uint8), axis=1)
-
-    num_of_correct = np.max(query_correct, axis=1)
-    seen_imgs = np.arange(1, rank+1)
-    seen_imgs = 1/seen_imgs
-
-    # match_coordinates = np.argwhere(match_mask).transpose()
-    # score_mask = np.copy(match_mask).astype(np.uint8)
-    # score_mask[1 - match_mask] = 0
-    # score_mask[match_coordinates[0], match_coordinates[1]] = match_coordinates[1]
-    score_mask = np.copy(query_correct)
-    score_mask[match_mask == 0] = 0
-    scores = score_mask * seen_imgs[None, :]
-    query_scores = np.divide(np.sum(scores, axis=1), num_of_correct, out=np.zeros(num_of_correct.shape),
-                             where=num_of_correct != 0)
-    total_score = np.sum(query_scores)/query_scores.shape
-
-    return total_score, query_scores
 
 def compute_mAP(rank, ground_truth, ranked_inds, query_inds):
 

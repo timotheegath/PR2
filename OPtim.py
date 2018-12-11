@@ -13,7 +13,7 @@ else:
 # ----------------------------------------------------------------------------------------------------------------------
 
 def mahalanobis_metric(parameters, features, features_compare = None):
-    parameters = parameters[0]
+
     if isinstance(parameters, np.ndarray):
         parameters = torch.from_numpy(parameters).type(Tensor)
     if isinstance(features, np.ndarray):
@@ -24,7 +24,8 @@ def mahalanobis_metric(parameters, features, features_compare = None):
 
     shape = features.shape[0]
 
-    L = parameters.view(shape, shape)
+    # L = parameters.view(shape, shape)
+    L = parameters
 
     L_features = torch.mm(L, features)
 
@@ -92,6 +93,7 @@ def gaussian_Maha(parameters, features, features_compare=None):
 
     return distances.transpose(1, 0)
 
+
 def poly_Maha(parameters, features, features_compare=None):
 
     if isinstance(parameters[0], np.ndarray):
@@ -131,6 +133,7 @@ def poly_Maha(parameters, features, features_compare=None):
 
     return distances.transpose(1, 0)
 
+
 def objective_function(parameters, lagrangian, features, labels = None, features_compare = None, kernel=None):
     if kernel is not None:
         min_distance = 0.2
@@ -169,7 +172,6 @@ def objective_function(parameters, lagrangian, features, labels = None, features
     return objective, distances.clone().detach().cpu().numpy()
 
 
-
 def optim_call(parameters):
 
     print(parameters)
@@ -205,6 +207,7 @@ if __name__ == '__main__':
 
     ground_truth = io.get_ground_truth()
     cam_ids = io.get_cam_ids()
+
     train_ind = io.get_training_indexes()
     if not BATCHIFY:
 
@@ -224,7 +227,7 @@ if __name__ == '__main__':
     parameters = []
     # PARAMETERS DEFINITION
     matrix = torch.zeros((features.shape[0], features.shape[0]), requires_grad=True)
-    matrix.data = torch.from_numpy(np.linalg.inv(np.cov(features[:, train_ind]))* np.random.rand(features.shape[0], features.shape[0])).type(Tensor)
+    matrix.data = torch.from_numpy(np.linalg.inv(np.cov(features[:, train_ind])) * np.random.rand(features.shape[0], features.shape[0])).type(Tensor)
     parameters.append(matrix)
     # For gaussian kernel
     if KERNEL is 'RBF':
@@ -234,7 +237,6 @@ if __name__ == '__main__':
     elif KERNEL is 'poly':
         param2 = torch.full((1,), 1, requires_grad=True)
         parameters.append(param2)
-
 
 
     lagrangian = torch.full((1,), 1, requires_grad=True)
@@ -281,5 +283,3 @@ if __name__ == '__main__':
             print(total_score_t, total_score)
         except KeyboardInterrupt:
             break
-
-
