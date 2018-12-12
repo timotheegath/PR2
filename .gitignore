@@ -1,6 +1,8 @@
 # Big files
 PR_data
-results/*.mat
+Results/*_.mat
+Results/data_plot.m
+Results/*.png
 
 #LateX
 ## Core latex/pdflatex auxiliary files:
@@ -139,5 +141,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-Results/data_plot.m
-*.png
+
