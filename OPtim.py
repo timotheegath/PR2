@@ -194,7 +194,7 @@ def lossC(distances, labels, l, slack):
         different_label_candidates = torch.masked_select(distances[i, :],  1 - label_mask[i, :])
         try:
             pair = different_label_candidates[0] - same_label_candidates[0]
-            constraint += pair - 1000
+            constraint += pair - 1
         except IndexError:
 
             pass
@@ -291,8 +291,8 @@ if __name__ == '__main__':
     lagrangian = torch.full((1,), 1, requires_grad=True)
     # parameters.append(lagrangian)
     # parameters.append(slack)
-    optimizer = torch.optim.SGD(parameters, lr=0.01)
-    l_optim = torch.optim.SGD([lagrangian, slack], lr=0.0007)
+    optimizer = torch.optim.SGD(parameters, lr=0.0000001)
+    l_optim = torch.optim.SGD([lagrangian, slack], lr=0.00007)
 
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp')
     for it in range(1000):
