@@ -292,7 +292,7 @@ if __name__ == '__main__':
     # parameters.append(lagrangian)
     # parameters.append(slack)
     optimizer = torch.optim.ASGD(parameters, lr=0.00001)
-
+    l_optim = torch.optim.SGD([lagrangian], lr=0.001)
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp', 'parameters')
     for it in range(1000):
         m_loss = 0
@@ -319,6 +319,7 @@ if __name__ == '__main__':
 
         if not it == 0:
             optimizer.step()
+            l_optim.step()
             # parameters[0].data = torch.triu(parameters[0]).data
             print('parameters', parameters[0])
             print('Optimized')
