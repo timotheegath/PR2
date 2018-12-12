@@ -129,11 +129,11 @@ if __name__ == '__main__':
 
 
         print(total_score_m1, total_score_m2, total_score_cc, total_score_cos, total_score_bis, total_score_mah)
-
+        # print(total_score_m2)
         # display_inds = np.array([456, 122, 186])
         # io.display_ranklist(query_indices, ranked_inds_bis, rank, 3, override_choice=display_inds)
 
-        recorder.update('Baselines', rank=rank, testm1_mAp=total_score_m1, testm2_mAp=total_score_m2,
-                           testcc_mAp=total_score_cc, testcos_mAp=total_score_cos, testbis_mAp=total_score_bis,
-                           testmah_mAp=total_score_mah)
+        # recorder.update('Baselines', rank=rank, testm1_mAp=total_score_m1, testm2_mAp=total_score_m2,
+        #                    testcc_mAp=total_score_cc, testcos_mAp=total_score_cos, testbis_mAp=total_score_bis,
+        #                    testmah_mAp=total_score_mah)
         # io.recorder.save('Baselines')
