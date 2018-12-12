@@ -203,7 +203,7 @@ def lossC(distances, labels, l, slack):
 
     same_distances = torch.masked_select(distances, label_mask)
 
-    loss = torch.sum(same_distances) - l*constraint
+    loss = torch.sum(same_distances) - l*constraint + slack
 
 
     return loss
