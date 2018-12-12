@@ -71,7 +71,6 @@ class BilinearSimilarity():
             return Kcos
         else:
             Km = torch.mm(torch.mm(x.transpose(1, 0), self.bilinear_matrix), y)
-            print(Km.shape)
             return Km
 
 class Mahalanobis():
@@ -117,7 +116,6 @@ def cross_correlation(features, features_compare=None):
     features_compare_norm = features_compare/torch.norm(features_compare, 2, dim=1, keepdim=True)
 
     distances = torch.mm(features_norm.transpose(1, 0), features_compare_norm)
-    print(distances.shape)
     return distances
 
 
