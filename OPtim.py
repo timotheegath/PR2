@@ -13,7 +13,7 @@ else:
 # ----------------------------------------------------------------------------------------------------------------------
 
 def mahalanobis_metric(parameters, features, features_compare = None):
-
+    parameters = parameters[0]
     if isinstance(parameters, np.ndarray):
         parameters = torch.from_numpy(parameters).type(Tensor)
     if isinstance(features, np.ndarray):
@@ -181,19 +181,20 @@ def lossA(distances, labels):
 
 
 def lossC(distances, labels, l, slack):
+    rows_to_pick = 300
     distances = distances - torch.diag(distances.diag())
     label_mask = labels.view(1, -1) == labels.view(-1, 1)
     constraint = torch.zeros((1,))
     chosen_rows = np.arange(0, distances.shape[0])
     np.random.shuffle(chosen_rows)
-    chosen_rows = chosen_rows[:min(100, distances.shape[0])].tolist()
+    chosen_rows = chosen_rows[:min(rows_to_pick, distances.shape[0])].tolist()
     for i in chosen_rows:
 
         same_label_candidates = torch.masked_select(distances[i, :],  label_mask[i, :])
         different_label_candidates = torch.masked_select(distances[i, :],  1 - label_mask[i, :])
         try:
             pair = different_label_candidates[0] - same_label_candidates[0]
-            constraint += pair - 1 - slack
+            constraint += pair - 1000
         except IndexError:
 
             pass
@@ -201,10 +202,10 @@ def lossC(distances, labels, l, slack):
 
     constraint = constraint
 
-    same_distances = torch.masked_select(distances, label_mask)
+    same_distances = torch.masked_select(torch.triu(distances), label_mask)
 
-    loss = torch.sum(same_distances) - l*constraint + slack
-
+    loss = torch.sum(same_distances) - torch.abs(l)*constraint
+    # print('Constraint', torch.sum(same_distances))
 
     return loss
 
@@ -235,9 +236,9 @@ def constraint_distances(features):
 
 if __name__ == '__main__':
     BATCHIFY = True
-    KERNEL = 'RBF'
+    KERNEL = None
     BATCH_SIZE = 2000
-    SKIP_STEP = 5
+    SKIP_STEP = 2
     # Feature loading
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     features = features.transpose()
@@ -283,18 +284,20 @@ if __name__ == '__main__':
         param2 = torch.full((1,), 0.1, requires_grad=True)
         parameters.append(param2)
 
-    lagrangian = torch.full((1,), 1, requires_grad=True)
+
 
 
     slack = torch.full((1,), 0.5, requires_grad=True)
     lagrangian = torch.full((1,), 1, requires_grad=True)
     # parameters.append(lagrangian)
-    parameters.append(slack)
-    optimizer = torch.optim.ASGD(parameters, lr=1)
+    # parameters.append(slack)
+    optimizer = torch.optim.SGD(parameters, lr=0.01)
+    l_optim = torch.optim.SGD([lagrangian, slack], lr=0.0007)
 
-    recorder = io.Recorder('loss', 'test_mAp', 'train_mAp', 'parameters')
+    recorder = io.Recorder('loss', 'test_mAp', 'train_mAp')
     for it in range(1000):
         m_loss = 0
+
         for _ in range(SKIP_STEP):
             if BATCHIFY:
                 temp_index = np.arange(0, train_ind.shape[0]).astype(np.int32)
@@ -308,9 +311,10 @@ if __name__ == '__main__':
             else:
                 train_ix = train_ind
 
-            loss, distances = objective_function([torch.triu(parameters[0]), parameters[1]], lagrangian, training_features, labels=training_labels, kernel=KERNEL)
+            loss, distances = objective_function([torch.triu(parameters[0])], lagrangian, training_features, slack=slack, labels=training_labels, kernel=KERNEL)
+            # print(distances)
             m_loss += loss.clone().detach().cpu().numpy()/SKIP_STEP
-            training_features.cpu()
+            # training_features.cpu()
             torch.cuda.empty_cache()
             # print(distances)
 
@@ -318,8 +322,9 @@ if __name__ == '__main__':
 
         if not it == 0:
             optimizer.step()
+            l_optim.step()
             # parameters[0].data = torch.triu(parameters[0]).data
-            print('parameters', parameters[0])
+            print('distances', distances)
             print('Optimized')
             optimizer.zero_grad()
         with torch.no_grad():
@@ -336,11 +341,12 @@ if __name__ == '__main__':
 
             total_score_t, query_scores_t = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ix)
             total_score, query_scores = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
-        recorder.update('RBF_cov-init_lagrag_lr1_test', loss=m_loss, test_mAp=total_score, train_mAp=total_score_t, parameters=parameters)
+        recorder.update('no_kernel_lagrag_lr0-1', loss=m_loss, test_mAp=total_score, train_mAp=total_score_t)
 
         print(m_loss)
-        print('sigma', param2)
-        print('lagrangian', lagrangian)
+
+        print('slack', slack.data)
+        print('lagrangian', lagrangian.data)
         print(total_score_t, total_score)
 
 
