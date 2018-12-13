@@ -1,6 +1,6 @@
 # Big files
 PR_data
-Results/*_.mat
+Results/*.mat
 Results/data_plot.m
 Results/*.png
 
