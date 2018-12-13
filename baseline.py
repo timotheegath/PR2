@@ -47,14 +47,18 @@ if __name__ == '__main__':
     # display_inds = np.array([456, 122, 186])
     # io.display_ranklist(query_indices, ranked_inds_test, rank, 3, override_choice=display_inds)
 
-    test_distances_m1 = metrics.minkowski_metric(query_features, p=1, features_compare=gallery_features)
-    test_distances_m2 = metrics.minkowski_metric(query_features, p=2, features_compare=gallery_features)
-    test_distances_cc = metrics.cross_correlation(query_features, features_compare=gallery_features)
-    test_distances_cos = cossim(query_features, gallery_features)
-    test_distances_bis = bisim(query_features, gallery_features)
-    test_distances_mah = metrics.mahalanobis_metric({'L': parameters}, query_features, features_compare=gallery_features)
-    distances = {'mink1': test_distances_m1, 'mink2': test_distances_m2, 'cc': test_distances_cc,
-                 'cos': test_distances_cos, 'bi': test_distances_bis,'mah': test_distances_mah}
+    # test_distances_m1 = metrics.minkowski_metric(query_features, p=1, features_compare=gallery_features)
+    # test_distances_m2 = metrics.minkowski_metric(query_features, p=2, features_compare=gallery_features)
+    # test_distances_cc = metrics.cross_correlation(query_features, features_compare=gallery_features)
+    # test_distances_cos = cossim(query_features, gallery_features)
+    # test_distances_bis = bisim(query_features, gallery_features)
+    test_distances_mah1 = metrics.mahalanobis_metric({'L': parameters}, query_features, features_compare=gallery_features)
+    # distances = {'mink1': test_distances_m1, 'mink2': test_distances_m2, 'cc': test_distances_cc,
+    #              'cos': test_distances_cos, 'bi': test_distances_bis,'mah': test_distances_mah}
+    parameters.data = torch.eye(features.shape[0])
+    test_distances_mah12 = metrics.mahalanobis_metric({'L': parameters}, query_features, gallery_features)
+    distances = {'cov_Maha': test_distances_mah1, 'eye_Maha': test_distances_mah12}
+
 
     data = dict.fromkeys(distances.keys())
     for k in distances.keys():
@@ -71,6 +75,6 @@ if __name__ == '__main__':
             data[k]['score'].append(score)
             # data[k]['ranked'].append(ranked)
 
-    savemat('Results/baseline', data)
+    savemat('Results/baseline_Maha', data)
 
     print(data)
