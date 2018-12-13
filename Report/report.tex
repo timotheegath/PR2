@@ -58,6 +58,7 @@ The optimisable parameters depend on which function $d(x_i, x_j)$ is chosen, as 
 
 \section{Baseline experiments}
 
+\subsection{Standard metrics}
 The following metrics were considered as a baseline, without any transforms applied to the features:
 \begin{enumerate}
     \item First order Minkowski
@@ -67,17 +68,17 @@ The following metrics were considered as a baseline, without any transforms appl
     \item Bilinear similarity
 \end{enumerate}
 
-We retrieved the k-nearest neighbours of the query features wit the gallery features according to each baseline metric and calculated mAp for k = 1-20. The results can be seen in the figure \ref{}.
-\begin{table}[]
+We retrieved the k-nearest neighbours of the query features wit the gallery features according to each baseline metric and calculated mAp for k = 1-20. The results can be seen in the figure \ref{fig:baseline_map}. Although all metrics perform in a similar trends as the rank of the nearest neighbour algorithm is changed, the Bilinear Similarity metric and Minkowsky of order 1 metric perform better, surpassing constantly the third best performing cosine similarity by 10 percentage points. Notably, similarity metrics perform much better on  these features than classic distance metrics.
+\begin{figure}
     \centering
-    \begin{tabular}{c|c}
-        Metric & mAp (\%) \\ \hline \hline
-        1 & 
-    \end{tabular}
-    \caption{Caption}
-    \label{tab:my_label}
-\end{table}
+    \includegraphics[width=\linewidth]{Graphs/mAp_vs_rank_baseline.png}
+    \caption{Baseline mAps calculated at different ranks on testing data}
+    \label{fig:baseline_map}
+\end{figure}
+\subsection{K-means}
 
+\section{Improved approach: Kernel/Non-kernel Mahalanobis distance}
+\subsection{}
 
 
 
