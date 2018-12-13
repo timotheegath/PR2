@@ -1,10 +1,6 @@
 import numpy as np
-import data_in_out as io
-from scipy.io import loadmat
-from sklearn.neighbors import KNeighborsClassifier as KNNC
-import evaluation as eval
+from Old import data_in_out as io
 import torch
-import metrics
 
 
 class custom_loss(torch.autograd.function):

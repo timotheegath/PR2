@@ -1,10 +1,7 @@
 import numpy as np
-import data_in_out as io
 import torch
-import evaluation as eval
-import metrics
-import matplotlib.pyplot as plt
-from OPtim import mahalanobis_metric
+from Old import evaluation as eval, data_in_out as io, metrics
+from Old.OPtim import mahalanobis_metric
 
 if torch.cuda.is_available():
     Tensor = torch.cuda.FloatTensor

@@ -1,22 +1,46 @@
 import numpy as np
 import torch
-from Old import data_in_out as io
+from Old import data_in_out as io, metrics
 
 if torch.cuda.is_available():
     Tensor = torch.cuda.FloatTensor
 else:
     Tensor = torch.FloatTensor
 
-def to_numpy(*arrays):
-    np_arrays = []
-    for array in arrays:
-        if isinstance(array, torch.Tensor):
-            np_arrays.append(array.clone().detach().cpu().numpy())
-        else:
-            np_arrays.append(array)
-    if len(arrays) is 1:
-        np_arrays = np_arrays[0]
-    return np_arrays
+# def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
+#
+#     features_classify = features[:, gallery_indices]
+#     features_query = features[:, query_indices]
+#     query_distances = np.zeros((query_indices.shape[0], gallery_indices.shape[0]))
+#
+#     for i in range(query_indices.shape[0]):
+#         print('HERE: ', i)
+#         gallery_mask_temp = np.repeat(gallery_mask[i, None], features.shape[0], axis=0)
+#         query_distances[i, :] = minkowski_metric(features_query[:, i], np.ma.masked_where(gallery_mask_temp, features_classify), 2)
+#     query_distances = np.ma.masked_where(gallery_mask, query_distances)
+#
+#     return query_distances
+
+def KNN_classifier(features, gallery_indices, query_indices, gallery_mask):
+
+    features_classify = torch.from_numpy(features[:, gallery_indices]).type(Tensor)
+    features_query = torch.from_numpy(features[:, query_indices]).type(Tensor)
+    query_distances = torch.zeros((query_indices.shape[0], gallery_indices.shape[0])).type(Tensor)
+    gallery_mask_t = torch.from_numpy(1 - gallery_mask.astype(np.uint8))
+    if torch.cuda.is_available():
+        gallery_mask_t = gallery_mask_t.cuda()
+
+    print('Calculating nearest neighbours:')
+    for i in range(query_indices.shape[0]):
+        io.loading_bar(i, query_indices.shape[0])
+        # gallery_mask_temp = np.repeat(gallery_mask[i, None], features.shape[0], axis=0)
+        out_d = metrics.minkowski_metric(features_query[:, i],
+                                         torch.index_select(features_classify, 1, gallery_mask_t[i].nonzero()[:, 0]).type(Tensor), 2)
+        query_distances[i, gallery_mask_t[i].nonzero()[:, 0]] = out_d
+    query_distances = np.ma.masked_where(gallery_mask, query_distances.cpu().numpy())
+
+    return query_distances
+
 
 def rank(r, distance_array, gallery_indexes, removal_mask=None, flip=False):
     # expect distance_array query_images X gallery_images, numpy masked array
@@ -94,43 +118,10 @@ def compute_mAP(rank, ground_truth, ranked_inds, query_inds):
 
     return total_score, query_scores
 
-def evaluate(r, distances, query_ind, gallery_ind, flip=False):
 
-    distances, query_ind, gallery_ind = to_numpy(distances, query_ind, gallery_ind)
-    query_ind, gallery_ind = query_ind.astype(np.int32), gallery_ind.astype(np.int32)
+if __name__ == '__main__':
     cam_ids = io.get_cam_ids()
-    g_t = io.get_ground_truth()
-    to_remove_mask = get_to_remove_mask(cam_ids, query_ind, gallery_ind, g_t)
-    distances = np.ma.masked_where(to_remove_mask, distances)
-    if flip is False:
-        ranked_winners = np.argsort(distances, axis=1)   # sort from smaller to bigger
-        ranked_distances = np.sort(distances, axis=1)
-
-    if flip is True:
-        ranked_winners = np.argsort(distances*(-1), axis=1)
-        ranked_distances = - np.sort(distances*(-1), axis=1)
-
-    ranked_local_winners = ranked_winners[:, :r]
-    ranked_distances = ranked_distances[:, :r]
-
-    ranked_winners = gallery_ind[ranked_winners]
-
-    query_labels = g_t[query_ind]
-    ranked_labels = g_t[ranked_winners[:, :r]]
-
-    match_mask = ranked_labels == query_labels[:, None]
-    query_correct = np.cumsum(match_mask.astype(np.uint8), axis=1)
-
-    num_of_correct = np.max(query_correct, axis=1)
-    seen_imgs = np.arange(1, r + 1)
-    seen_imgs = 1 / seen_imgs
-
-    score_mask = np.copy(query_correct)
-    score_mask[match_mask == 0] = 0
-    scores = score_mask * seen_imgs[None, :]
-    query_scores = np.divide(np.sum(scores, axis=1), num_of_correct, out=np.zeros(num_of_correct.shape),
-                             where=num_of_correct != 0)
-    total_score = np.sum(query_scores) / query_scores.shape
-
-    return ranked_winners, total_score
-
+    query_indices = io.get_query_indexes()
+    gallery_indices = io.get_gallery_indexes()
+    g_ts = io.get_ground_truth()
+    get_to_remove_mask(cam_ids, query_indices, gallery_indices, g_ts)

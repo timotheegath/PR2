@@ -1,9 +1,6 @@
 import numpy as np
-import data_in_out as io
-import evaluation as eval
+from Old import evaluation as eval, data_in_out as io
 import torch
-import metrics
-import data_represent as dare
 
 if torch.cuda.is_available():
     Tensor = torch.cuda.FloatTensor
@@ -11,6 +8,24 @@ else:
     Tensor = torch.FloatTensor
 
 # ----------------------------------------------------------------------------------------------------------------------
+class StopCallback():
+
+    def __init__(self, tolerance):
+        self.tolerance = tolerance
+        self.losses = np.zeros((tolerance,), dtype=np.float32)
+        self.iter = 0
+
+    def update_and_analyse(self, newLoss):
+        for i in range(self.tolerance-1):
+            self.losses[i+1] = self.losses[i]
+        self.losses[0] = newLoss
+
+        if self.iter < self.tolerance:
+            pass
+        elif self.losses[-1] :
+            pass
+
+
 
 def mahalanobis_metric(parameters, features, features_compare = None):
 
@@ -204,7 +219,7 @@ def lossC(distances, labels, l, slack):
 
     same_distances = torch.masked_select(distances, label_mask)
 
-    loss = torch.sum(same_distances) - l*constraint + slack
+    loss = torch.sum(same_distances) - torch.abs(l)*constraint + slack
 
 
     return loss
@@ -236,9 +251,10 @@ def constraint_distances(features):
 
 if __name__ == '__main__':
     BATCHIFY = True
-    KERNEL = None
+    KERNEL = 'RBF'
     BATCH_SIZE = 2000
-    SKIP_STEP = 1
+    SKIP_STEP = 3
+    filename = 'kernel_Maha_RBFslow_eye-init2'
     # Feature loading
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
     features = features.transpose()
@@ -264,9 +280,11 @@ if __name__ == '__main__':
 
     parameters = []
     # PARAMETERS DEFINITION
-    matrix = torch.zeros((features.shape[0], features.shape[0]), requires_grad=True)
+    matrix = torch.eye(features.shape[0], requires_grad=True)
+    matrix.data = torch.from_numpy(np.linalg.cholesky(np.eye(features.shape[0]))).type(Tensor)
+    # matrix = torch.rand((features.shape[0], features.shape[0]), requires_grad=True)
 
-    matrix.data = (torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(Tensor))
+    # matrix.data = (torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(Tensor))
     # matrix = torch.eye(features.shape[0], requires_grad=True)
     # matrix.data = torch.tril(matrix)
 
@@ -291,10 +309,12 @@ if __name__ == '__main__':
     lagrangian = torch.full((1,), 1, requires_grad=True)
     # parameters.append(lagrangian)
     # parameters.append(slack)
-    optimizer = torch.optim.ASGD(parameters, lr=0.00001)
+    optimizer = torch.optim.ASGD(parameters, lr=0.002)
     l_optim = torch.optim.SGD([lagrangian], lr=0.001)
-    recorder = io.Recorder('loss', 'test_mAp', 'train_mAp', 'parameters')
+    recorder = io.Recorder('loss', 'test_mAp', 'train_mAp')
+    param_recorder = io.ParameterSaver('L_matrix')
     for it in range(1000):
+        param_recorder.update(filename + '_param_', L_matrix=parameters[0].clone().detach().cpu().numpy())
         m_loss = 0
         for _ in range(SKIP_STEP):
             if BATCHIFY:
@@ -309,7 +329,7 @@ if __name__ == '__main__':
             else:
                 train_ix = train_ind
 
-            loss, distances = objective_function([torch.triu(parameters[0])], lagrangian, training_features, labels=training_labels, kernel=KERNEL)
+            loss, distances = objective_function([torch.triu(parameters[0]), parameters[1]], lagrangian, training_features, labels=training_labels, kernel=KERNEL)
             m_loss += loss.clone().detach().cpu().numpy()/SKIP_STEP
             training_features.cpu()
             torch.cuda.empty_cache()
@@ -338,7 +358,7 @@ if __name__ == '__main__':
 
             total_score_t, query_scores_t = eval.compute_mAP(10, ground_truth, ranked_idx_train, train_ix)
             total_score, query_scores = eval.compute_mAP(10, ground_truth, ranked_idx_test, query_ind)
-        recorder.update('POW_cov-init_lagrag_lr1_test', loss=m_loss, test_mAp=total_score, train_mAp=total_score_t, parameters=parameters)
+        recorder.update(filename, loss=m_loss, test_mAp=total_score, train_mAp=total_score_t)
 
         print(m_loss)
         # print('power', param2)

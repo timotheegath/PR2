@@ -8,34 +8,9 @@ import collections
 
 NUMBER_PEOPLE = 1360
 IMAGE_SIZE = (293, 100)
-if torch.cuda.is_available():
-    Tensor = torch.cuda.FloatTensor
-else:
-    Tensor = torch.FloatTensor
-def to_torch(*arrays):
-    torch_arrays = []
-    for array in arrays:
-        if isinstance(array, np.ndarray):
-            torch_arrays.append(torch.from_numpy(array).type(Tensor))
-        else:
-            torch_arrays.append(array)
-    if len(arrays) is 1:
-        torch_arrays = torch_arrays[0]
-    return torch_arrays
-
-def to_numpy(*arrays):
-    np_arrays = []
-    for array in arrays:
-        if isinstance(array, torch.Tensor):
-            np_arrays.append(array.clone().detach().cpu().numpy())
-        else:
-            np_arrays.append(array)
-    if len(arrays) is 1:
-        np_arrays = np_arrays[0]
-    return np_arrays
 
 
-class Recorder:
+class Recorder():
 
     def __init__(self, *args):
         self.memory = {}
@@ -54,17 +29,23 @@ class Recorder:
             if isinstance(kwargs[key], collections.Iterable):
                 tosave = []
                 for p in kwargs[key]:
-                    tosave.append(to_numpy(p))
+                    if isinstance(p, torch.Tensor):
+                        tosave.append(p.clone().detach().cpu().numpy())
+
+                    else:
+                        tosave.append(p)
+
+            elif isinstance(kwargs[key], torch.Tensor):
+                tosave = kwargs[key].clone().detach().cpu().numpy()
             else:
-                tosave = to_numpy(kwargs[key])
+                tosave = kwargs[key]
 
             existing[key].append(tosave)
             if key not in self.keys:
                 print('Recorder: Key not recognised')
             savemat('Results/' + name, existing)
 
-
-class ParameterSaver:
+class ParameterSaver():
 
     def __init__(self, *param_names, memory_size=3):
         self.memory = dict.fromkeys(param_names)
@@ -78,7 +59,7 @@ class ParameterSaver:
         for key in new_values.keys():
             for iteration in range(self.memory_size - 1):
                 self.memory[key][iteration + 1] = self.memory[key][iteration]
-            self.memory[key][0] = to_numpy(new_values[key])
+            self.memory[key][0] = new_values[key]
         savemat('Results/' + name, self.memory)
 
 
@@ -245,29 +226,38 @@ def get_im_info(filename=None, index=None, phase='training', labels=None, how_ma
 #   Get the index of the images/features to be used for training
 def get_training_indexes():
     train_idxs = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['train_idx'])[
-        'train_idx'].flatten().astype(np.int32)
+        'train_idx'].flatten()
 
 
     return train_idxs - 1
 
 
+def get_validation_indexes(number=100):
+
+    _, g_t, _, ix = get_im_info(phase='validation', return_im=False)
+
+    return np.array(ix).flatten() - 1, g_t
+
+
+
+
 #   Get the index of the images/features for testing
 def get_query_indexes():
-    query_idxs= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])['query_idx'].flatten().astype(np.int32)
+    query_idxs= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['query_idx'])['query_idx'].flatten()
 
     return query_idxs - 1
 
 
 def get_gallery_indexes():
     gal_idxs= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['gallery_idx'])[
-        'gallery_idx'].flatten().astype(np.int32)
+        'gallery_idx'].flatten()
 
     return gal_idxs - 1
 
 
 def get_cam_ids():
     cam_ids= loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['camId'])[
-        'camId'].flatten().astype(np.int32)
+        'camId'].flatten()
 
     return cam_ids
 
@@ -275,7 +265,7 @@ def get_cam_ids():
 def get_ground_truth():
 
     all_g_t = loadmat('PR_data/cuhk03_new_protocol_config_labeled.mat', variable_names=['labels'])['labels'].flatten()
-    return all_g_t.astype(np.int32)
+    return all_g_t
 
 
 def interpret_rank(ranked_results, gallery_indexes, query_indexes):
