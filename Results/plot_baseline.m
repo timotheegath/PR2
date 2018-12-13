@@ -1,9 +1,9 @@
 close all, clear all
 load('baseline')
 keys = {'Bilinear Similarity', 'Cross-correlation', 'Cosine Similarity' ...
-    'Mahalanobis distance', 'Minkovsky metric, p=1' ...
-    'Minkovsky metric, p=2'};
-results = {bi, cc, cos, mah, mink1, mink2};
+   'Minkowsky metric, p=1' ...
+    'Minkowsky metric, p=2'};
+results = {bi, cc, cos, mink1, mink2};
 rank = 1:14;
 figure
 hold on
