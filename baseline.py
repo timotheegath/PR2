@@ -59,7 +59,7 @@ if __name__ == '__main__':
     data = dict.fromkeys(distances.keys())
     for k in distances.keys():
         data[k] = {'score': [], 'ranked': []}
-    for i in range(10, 11, 1):
+    for i in range(1, 15, 1):
 
         rank = i
         for k in distances.keys():
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                 flip = False
             ranked, score = eval.evaluate(rank, distances[k], query_indices, gallery_indices, flip=flip)
             data[k]['score'].append(score)
-            data[k]['ranked'].append(ranked)
+            # data[k]['ranked'].append(ranked)
 
     savemat('Results/baseline', data)
 
