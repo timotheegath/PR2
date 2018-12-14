@@ -115,20 +115,33 @@ Following this we attempted to learn the matrix A through constrained optimisati
 s.t.
 \begin{equation}
     \begin{aligned}
-        d_A{(x_i, x_k)} - d_A (x_i, x_j) \ge 1 \forall(x_i, x_j, x_k) \in{R}  \\
+        d_A{(x_i, x_k)} - d_A (x_i, x_j) \ge 1 \forall(x_i, x_j, x_k) \in{\mathbb{R}}  \\
         A \ge 0 \\
-        where ()
+        where (x_i, x_j) \in S, (x_i, x_k) \in D
     \end{aligned}
 \end{equation}
-The loss was implemented 
+The optimisation problem was implemented as: 
+\begin{equation}
+    \begin{aligned}
+    loss = \sum_{d_A \in D_s}d_A - |\lambda|C \\
+        C = \sum_{}d_A{(x_i, x_k)} - d_A (x_i, x_j) -1,  \forall(x_j, x_k)  \\ \text{at 100 randomly chosen i}
+    \end{aligned}
+\end{equation}
 
-\appendix
-\begin{appendices}
-\chapter{Optimisation of computations}
+The first term is the sum of distances between similar points (denoted by set Ds). The second term forms the sum of randomly generated constraints parameterised by l, as all the constraint calculations could not be held in memory during runtime. The parameters for optimisation are the elements of A, used for distance computation, and the parameter l. The optimisation was tested with no kernel, as well as with the Gaussian and Polynimial kernels. With kernel learning, the variance $\sigma$ and power $p$ were scalar parameters to be optimised as well. The matrix A was initialised as either training data covariance matrix or as an identity matrix. The parameters l was initialised to 1, and kernel parameters $\sigma$ and $p$ to 30 and 0.1 respectively, when needed. The kernel parameter values were c
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Graphs/I_init_comparison.png}
+    \caption{Evolution of mAp with the number of optimisation iterations, for the Mahalanobis distance initialised with the identity matrix. The variants with no kernel, RBF kernel and polynomial kernel are shown.}
+    \label{fig:comparison_I_init}
+\end{figure}
+
+\appendices
+
+\section{Optimisation of computations}
 
 The deep learning platform PyTorch was used to perform most the large-scale matrix algebra as well as the optimisation. This platform allowed higher computation speeds by enabling computation graphs and making use of the parallel computing capabilities of our GPU.
-
-\end{appendices}
 The initial experiment was done by attempting to minimise the following objective function: \begin{equation}
     loss = l*\sum_{d \in S}d -  \sum_{d \in D}\sqrt{d}
 \end{equation}
@@ -143,13 +156,13 @@ s.t.
         A \ge 0
     \end{aligned}
 \end{equation}
-
 The A matrix was initialised as the 
 inverse covariance matrix of the training features and decomposed by Cholesky decomposition to obtain the upper triangular matrix L. After transforming the training data points by L, Euclidian distance is computed on the transformed data points as follows:
 \begin{equation}
     |Lx_i - Lx_j|_2^2 = \sum_{i}(Lx_i)^2 + \sum_{j}(Lx_j)^2 - 2(Lx_i)^T(Lx_j)
 \end{equation}
 The expansion on the right hand side ignores the square root operation in 2-norm computation. The square terms are first computed for all the training data points contained in the data matrix X and the last term is found as the matrix product of $X^TX$. This result gives the distance matrix of size $NxN$ where N is the number of training points. The diagonal is set to 0, as it should be when $x_i = x_j$, to stabilise the optimisation, since (due to computational precision) the summation of the first two terms slightly differs to the summation in the matrix product. 
+
 
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
