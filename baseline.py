@@ -28,11 +28,11 @@ if __name__ == '__main__':
     gallery_indices = io.get_gallery_indexes()
     gallery_features = features[:, gallery_indices]
 
-    cossim = metrics.BilinearSimilarity(torch.eye(query_features.shape[0]), cosine=True)
-    bisim = metrics.BilinearSimilarity(torch.eye(query_features.shape[0], query_features.shape[0]), cosine=False)
+    # cossim = metrics.BilinearSimilarity(torch.eye(query_features.shape[0]), cosine=True)
+    # bisim = metrics.BilinearSimilarity(torch.eye(query_features.shape[0], query_features.shape[0]), cosine=False)
 
     parameters = torch.rand((training_features.shape[0], training_features.shape[0]), requires_grad=True)
-    parameters.data = torch.from_numpy(np.linalg.inv(np.cov(training_features))).type(Tensor)
+    parameters.data = torch.from_numpy(np.linalg.inv(np.corrcoef(training_features))).type(Tensor)
     parameters.data = torch.potrf(parameters.data)
 
     # parameters = torch.tril(parameters).view(-1)
@@ -50,8 +50,8 @@ if __name__ == '__main__':
     test_distances_m1 = metrics.minkowski_metric(query_features, p=1, features_compare=gallery_features)
     test_distances_m2 = metrics.minkowski_metric(query_features, p=2, features_compare=gallery_features)
     test_distances_cc = metrics.cross_correlation(query_features, features_compare=gallery_features)
-    test_distances_cos = cossim(query_features, gallery_features)
-    test_distances_bis = bisim(query_features, gallery_features)
+    test_distances_cos = metrics.cosine_similarity(query_features, features_compare=gallery_features)
+    test_distances_bis = metrics.BilinearSimilarity({'A': torch.eye(features.shape[0])}, query_features, features_compare=gallery_features)
     test_distances_mah1 = metrics.mahalanobis_metric({'L': parameters}, query_features, features_compare=gallery_features)
 
     parameters.data = torch.eye(features.shape[0])
@@ -68,7 +68,8 @@ if __name__ == '__main__':
 
         rank = i
         for k in distances.keys():
-            if k is 'cc' or k is 'bi' or k is 'cos':
+            if k is 'cc':
+                    #or k is 'bi' or k is 'cos':
                 flip = True
             else:
                 flip = False
