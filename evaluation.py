@@ -110,9 +110,6 @@ def evaluate(r, distances, query_ind, gallery_ind, clusters=False, flip=False):
         ranked_winners = np.argsort(distances*(-1), axis=1)
         ranked_distances = - np.sort(distances*(-1), axis=1)
 
-    ranked_local_winners = ranked_winners[:, :r]
-    # ranked_distances = ranked_distances[:, :r]
-
     ranked_winners = gallery_ind[ranked_winners]
 
     query_labels = g_t[query_ind]
@@ -121,6 +118,8 @@ def evaluate(r, distances, query_ind, gallery_ind, clusters=False, flip=False):
     else:
         ranked_labels = np.ma.masked_where(ranked_distances != ranked_distances[:, 0, None], g_t[ranked_winners])
     match_mask = ranked_labels == query_labels[:, None]
+    if clusters:
+        match_mask = np.ma.masked_where(ranked_distances != ranked_distances[:, 0, None], match_mask)
     query_correct = np.cumsum(match_mask.astype(np.uint8), axis=1)
 
     num_of_correct = np.max(query_correct, axis=1)

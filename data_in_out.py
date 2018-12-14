@@ -79,6 +79,7 @@ class ParameterSaver:
             for iteration in range(self.memory_size - 1):
                 self.memory[key][iteration + 1] = self.memory[key][iteration]
             self.memory[key][0] = to_numpy(new_values[key])
+
         savemat('Results/' + name, self.memory)
 
 
