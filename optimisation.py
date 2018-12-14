@@ -30,7 +30,7 @@ class StopCallback():
             pass
 
 
-class TrainableMetric():
+class TrainableMetric:
 
     def __init__(self, init_params, dims, loss, lagrangian=True, kernel=None):
 
@@ -212,7 +212,7 @@ if __name__ == '__main__':
             print('Optimized')
 
         with torch.no_grad():
-
+            # Test phase
             test_distances = Metric(features[:, query_ind], features[:, gallery_ind])
 
         ranked_winners, test_score = eval.evaluate(RANK, test_distances, query_ind, gallery_ind)
