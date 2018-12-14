@@ -179,7 +179,7 @@ if __name__ == '__main__':
         init_params['sigma'] = param2
 
     elif KERNEL is 'poly':
-        
+
         param2 = torch.full((1,), 0.1)
         init_params['p'] = param2
 
@@ -216,7 +216,9 @@ if __name__ == '__main__':
             test_distances = Metric(features[:, query_ind], features[:, gallery_ind])
 
         ranked_winners, test_score = eval.evaluate(RANK, test_distances, query_ind, gallery_ind)
+        print('I/O operation, do not interrupt')
         recorder.update(FILENAME, loss=m_loss, test_mAp=test_score, train_mAp=m_score)
+        print('Done')
 
         print(m_loss)
 

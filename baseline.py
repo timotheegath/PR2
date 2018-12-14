@@ -74,7 +74,7 @@ if __name__ == '__main__':
             ranked, score = eval.evaluate(rank, distances[k], query_indices, gallery_indices, flip=flip)
             data[k]['score'].append(score)
             # data[k]['ranked'].append(ranked)
-
+    print('I/O operation, do not interrupt')
     savemat('Results/baseline_Maha', data)
-
+    print('Done')
     print(data)
