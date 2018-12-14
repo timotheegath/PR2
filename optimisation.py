@@ -171,11 +171,11 @@ def initialise(mode):
 if __name__ == '__main__':
     BATCHIFY = True
     SIM = True
-    KERNEL = None
+    KERNEL = 'poly'
     BATCH_SIZE = 2000
     RANK = 10
     SKIP_STEP = 3
-    FILENAME = 'maha_I_init_train'
+    FILENAME = 'poly_maha_I_init_train'
     NUM_ITER = 1000
     INIT_MODES = ['cov', 'I', 'restore']
 

@@ -66,7 +66,7 @@ def gaussian_Maha(parameters, features, features_compare=None):
     denom = 2 * sigma ** 2
 
     L, features, features_compare = to_torch(L, features, features_compare)
-    print(type(features))
+
     L_features = torch.mm(L, features)
     if features_compare is not None:
         L_features_compare = torch.mm(L, features_compare)
