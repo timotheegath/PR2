@@ -120,9 +120,11 @@ def lossC(distances, labels, l):
 
         same_label_candidates = torch.masked_select(distances[i, :],  label_mask[i, :])
         different_label_candidates = torch.masked_select(distances[i, :],  1 - label_mask[i, :])
+        pair = same_label_candidates[:, None] - different_label_candidates[None, :]
+
         try:
-            pair = different_label_candidates[0] - same_label_candidates[0]
-            constraint += pair - 1
+            # pair = different_label_candidates[0] - same_label_candidates[0]
+            constraint += torch.sum(pair - 1)
         except IndexError:
 
             pass
@@ -170,7 +172,7 @@ def initialise(mode):
 
 if __name__ == '__main__':
     BATCHIFY = True
-    SIM = True
+    SIM = False
     KERNEL = 'poly'
     BATCH_SIZE = 2000
     RANK = 10
@@ -210,7 +212,7 @@ if __name__ == '__main__':
 
         param2 = torch.full((1,), 0.1)
         init_params['p'] = param2
-        lr = 0.001
+        lr = 0.000001
 
 
     Metric = TrainableMetric(init_params, features.shape[0], lossC, lagrangian=True, kernel=KERNEL, similarity=SIM)
