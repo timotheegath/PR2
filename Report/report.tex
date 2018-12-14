@@ -1,22 +1,29 @@
 \documentclass[10pt,technote]{IEEEtran}
 \usepackage{amssymb}
 \usepackage{amsmath}
+\usepackage[toc, page]{appendix}
 \usepackage{graphicx}
 \usepackage{subcaption}
 
 \title{Coursework 2: Representation and Distance Metrics Learning }
-\author{Timothee Gathmann \textit{(\textbf{tlg15}, 01061046)}\\ Luka Lagator\textit{ ()}}
+\author{Timothee Gathmann \textit{(\textbf{tlg15}, 01061046)}\\ Luka Lagator\textit{ (\textbf{ll5915, }01108413)}}
 
 \begin{document}
 
 \maketitle
+\begin{abstract}
+In the aim of retrieving the most correct nearest neighbours of a labelled data point, different distance metrics were evaluated, without any training. The Mahalanobis distance was then implemented without and with training its distance matrix, and ultimately kernelised to possibly improve the nearest neighbour score. The distance metric optimisation didn't significantly improve on the euclidean metric, as it seemed that the data was already optimally represented.
+
+\end{abstract}
+
+
 
 \section{Problem formulation}
 The features $X \in \mathbb{R}^{D X N}$ are readily available, and consist of a set of samples $x_i \in \mathbb{R}^D, i = 1, 2, ..., N$ corresponding to $N$ pictures of pedestrians. Each sample is assigned a ground-truth label $l(x_i) \in \mathbb{N}$ identifying the individual on the picture. The features are divided in a training subset $T$, a query subset $Q$ and a gallery subset $G$. Our goal is to minimise the retrieval error when performing retrieval experiments with the K-Nearest Neighbour algorithm \cite{Cover1967} at different ranks ($R = 1, 2, ..., 10 $), with different distance metrics. For a distance metric $d(x_i, x_j)$, the nearest neighbour $x_j \in X$ of $x_i$ is defined as
 \begin{equation}
     \begin{aligned}
     n_0(x_i) = x_j \\
-d(x_i, x_j) \leq d(x_i, x_n), \forall x_n \in X - x_j
+d(x_i, x_j) \le d(x_i, x_n), \forall x_n \in X - x_j
     \end{aligned}
 \end{equation}
 The $k$ nearest neighbours of $x_i \in X$ are :
@@ -24,7 +31,7 @@ The $k$ nearest neighbours of $x_i \in X$ are :
     \begin{aligned}
     n_k(x_i) = \lbrace x_j, n_{k-1}\rbrace 
     \\
-    d(x_i, x_j) \leq d(x_i, x_n) \forall x_n \in X - n_k(x_i)
+    d(x_i, x_j) \le d(x_i, x_n) \forall x_n \in X - n_k(x_i)
     \end{aligned}
 \end{equation}
 We define the mAp as
@@ -68,7 +75,7 @@ The following metrics were considered as a baseline, without any transforms appl
     \item Bilinear similarity
 \end{enumerate}
 
-We retrieved the k-nearest neighbours of the query features wit the gallery features according to each baseline metric and calculated mAp for k = 1-20. The results can be seen in the figure \ref{fig:baseline_map}. Although all metrics perform in a similar trends as the rank of the nearest neighbour algorithm is changed, the Bilinear Similarity metric and Minkowsky of order 1 metric perform better, surpassing constantly the third best performing cosine similarity by 10 percentage points. Notably, similarity metrics perform much better on  these features than classic distance metrics.
+We retrieved the k-nearest neighbours of the query features with the gallery features according to each baseline metric and calculated mAp for k = 1-15. The results can be seen in the figure \ref{fig:baseline_map}. Although all metrics perform in a similar trends as the rank of the nearest neighbour algorithm is changed, the Minkowsky metrics of order 1 and 2 perform better, surpassing constantly the third best performing cosine similarity by 10 percentage points. Bilinear Similarity metric was computed with the identity matrix and yielded the exact same results as cosine similarity, implying that normalisation by the 2-norm product makes no difference.
 \begin{figure}
     \centering
     \includegraphics[width=\linewidth]{Graphs/mAp_vs_rank_baseline.png}
@@ -78,10 +85,71 @@ We retrieved the k-nearest neighbours of the query features wit the gallery feat
 \subsection{K-means}
 
 \section{Improved approach: Kernel/Non-kernel Mahalanobis distance}
-\subsection{}
+Where this distance is defined by:
+\begin{equation}
+    d_A(x, y) = (x - y)^TA(x - y)
+\end{equation}
+and $A \in \mathbb{R}^{DXD}$, $A \ge 0$
+\subsection{Without iterative training: choosing the right A matrix}
+It was first explored what performance could be achieved by simply choosing a good A matrix and not not train it any further. Two options were compared:
+\begin{enumerate}
+    \item $A = I \rightarrow d_A(x, y) = ||x - y||_2^2$
+    \item $A = cov(x \in T)^{-1}$
+\end{enumerate}
+Their respective performance on the test dataset are displayed in figure \ref{fig:maha_map}. 
 
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Graphs/maha_Map.png}
+    \caption{mAps calculated at different ranks on the testing data. The metric being tested is the Mahalanobis distance with two different A matrices}
+    \label{fig:maha_map}
+\end{figure}
 
+In the case $A = I$, the Malahanobis metric is the Euclidian distance as shown in the previous figure (\ref{fig:baseline_map}). In comparison, the covariance based Mahalanobis metric doesn't show promising result. One reason for that might be that the features are already strongly decorrelated, and the covariance matrix does not apply any linear transformation to the features other than scaling each feature by the inverse of its variance (only diagonal elements in the covariance matrix). 
 
+Following this we attempted to learn the matrix A through constrained optimisation. The objective function to minimise was the following:
+
+\begin{equation}
+    \min_{A}\sum_{(x_i, x_j) \in S}{d_A (x_i, x_j)}
+\end{equation}
+s.t.
+\begin{equation}
+    \begin{aligned}
+        d_A{(x_i, x_k)} - d_A (x_i, x_j) \ge 1 \forall(x_i, x_j, x_k) \in{R}  \\
+        A \ge 0 \\
+        where ()
+    \end{aligned}
+\end{equation}
+The loss was implemented 
+
+\appendix
+\begin{appendices}
+\chapter{Optimisation of computations}
+
+The deep learning platform PyTorch was used to perform most the large-scale matrix algebra as well as the optimisation. This platform allowed higher computation speeds by enabling computation graphs and making use of the parallel computing capabilities of our GPU.
+
+\end{appendices}
+The initial experiment was done by attempting to minimise the following objective function: \begin{equation}
+    loss = l*\sum_{d \in S}d -  \sum_{d \in D}\sqrt{d}
+\end{equation}
+where set S contains all computed distances between similar data points and set D contains all the distances between dissimilar data points. This was a rudimentary implementation of the constrained optimisation problem defined as
+\begin{equation}
+    \max_{A}\sum_{(x_i, x_j) \in D}\sqrt{d_A (x_i, x_j)}
+\end{equation}
+s.t.
+\begin{equation}
+    \begin{aligned}
+        c(A) = \sum_{(x_i, x_j) \in S}d_A (x_i, x_j) \le 1 \\
+        A \ge 0
+    \end{aligned}
+\end{equation}
+
+The A matrix was initialised as the 
+inverse covariance matrix of the training features and decomposed by Cholesky decomposition to obtain the upper triangular matrix L. After transforming the training data points by L, Euclidian distance is computed on the transformed data points as follows:
+\begin{equation}
+    |Lx_i - Lx_j|_2^2 = \sum_{i}(Lx_i)^2 + \sum_{j}(Lx_j)^2 - 2(Lx_i)^T(Lx_j)
+\end{equation}
+The expansion on the right hand side ignores the square root operation in 2-norm computation. The square terms are first computed for all the training data points contained in the data matrix X and the last term is found as the matrix product of $X^TX$. This result gives the distance matrix of size $NxN$ where N is the number of training points. The diagonal is set to 0, as it should be when $x_i = x_j$, to stabilise the optimisation, since (due to computational precision) the summation of the first two terms slightly differs to the summation in the matrix product. 
 
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
