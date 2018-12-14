@@ -94,7 +94,7 @@ def compute_mAP(rank, ground_truth, ranked_inds, query_inds):
 
     return total_score, query_scores
 
-def evaluate(r, distances, query_ind, gallery_ind, flip=False):
+def evaluate(r, distances, query_ind, gallery_ind, clusters=False, flip=False):
 
     distances, query_ind, gallery_ind = to_numpy(distances, query_ind, gallery_ind)
     query_ind, gallery_ind = query_ind.astype(np.int32), gallery_ind.astype(np.int32)
@@ -111,13 +111,15 @@ def evaluate(r, distances, query_ind, gallery_ind, flip=False):
         ranked_distances = - np.sort(distances*(-1), axis=1)
 
     ranked_local_winners = ranked_winners[:, :r]
-    ranked_distances = ranked_distances[:, :r]
+    # ranked_distances = ranked_distances[:, :r]
 
     ranked_winners = gallery_ind[ranked_winners]
 
     query_labels = g_t[query_ind]
-    ranked_labels = g_t[ranked_winners[:, :r]]
-
+    if not clusters:
+        ranked_labels = g_t[ranked_winners[:, :r]]
+    else:
+        ranked_labels = np.ma.masked_where(ranked_distances != ranked_distances[:, 0, None], g_t[ranked_winners])
     match_mask = ranked_labels == query_labels[:, None]
     query_correct = np.cumsum(match_mask.astype(np.uint8), axis=1)
 
