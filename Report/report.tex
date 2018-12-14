@@ -85,6 +85,7 @@ We retrieved the k-nearest neighbours of the query features with the gallery fea
 \subsection{K-means}
 
 \section{Improved approach: Kernel/Non-kernel Mahalanobis distance}
+Mahalanobis distance learning was chosen as an attempt to improve the baseline metric, by learning the feature transformation that would improve the Euclidian distance metric. This seemed sensible as Euclidian distance was already 
 Where this distance is defined by:
 \begin{equation}
     d_A(x, y) = (x - y)^TA(x - y)
@@ -130,15 +131,33 @@ The optimisation problem was implemented as:
 \end{equation}
 
 The first term is the sum of distances between similar points (denoted by set Ds). The second term forms the sum of randomly generated constraints parameterised by $\lambda$, as all the constraint calculations could not be held in memory during runtime. The parameters for optimisation are the elements of A, used for distance computation, and the parameter $\lambda$. The optimisation was tested on three cases; with no kernel, as well as with the Gaussian and Polynomial kernels. With kernel learning, the variance $\sigma$ and power $p$ were scalar parameters to be optimised as well. The matrix A was initialised as either training data covariance matrix or as an identity matrix. The parameters l was initialised to 1, and kernel parameters $\sigma$ and $p$ to 30 and 0.1 respectively, when needed. $\sigma$ was chosen by inspection to prevent extreme values ([0,1]) as starting values for the kernel. Similarly $p$ was chosen to prevent tendency to $\inf$ of kernel function values.
-Figures \ref{fig:comparison_I_init} and \ref{fig:} show the results of the three cases for two different initialisations of matrix A.
+Figure \ref{fig:comparison_init} shows the results of the three cases for two different initialisations of matrix A. We can see that the polynomial kernel does not perform well. In comparison, using no kernel or gaussian kernel yields better results, where  the gaussian kernel tends to do a bit better.
+All the mAp for the testing data was calculated by kNN retrieval for $k = 10$.
+The best result was achieved by the gaussian kernel learning when the A matrix was initialised as I.
 
 \begin{figure}
+\begin{subfigure}{\linewidth}
     \centering
     \includegraphics[width=\linewidth]{Graphs/I_init_comparison.png}
-    \caption{Evolution of mAp with the number of optimisation iterations, for the Mahalanobis distance initialised with the identity matrix. The variants with no kernel, RBF kernel and polynomial kernel are shown.}
-    \label{fig:comparison_I_init}
+    
+    
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{Graphs/cov_init_comparison.png}
+\end{subfigure}
+\caption{Evolution of mAp with the number of optimisation iterations, for the Mahalanobis distance initialised with the identity matrix (top) and the covariance matrix (bottom). The variants with no kernel, RBF kernel and polynomial kernel are shown.}
+\label{fig:comparison_init}
 \end{figure}
-
+\begin{table}
+    \centering
+    \begin{tabular}{c|c}
+        Euclidean distance & RBF Kernel Mahalanobis distance \\
+        50.64\% & 51.64 \%
+    \end{tabular}
+    \caption{Comparison of the mAp of the euclidean distance and our improved RBF kernel Mahalanobis distance initialised with an identity matrix}
+    \label{tab:my_label}
+\end{table}
 \appendices
 
 \section{Optimisation of computations}
