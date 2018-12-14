@@ -177,12 +177,12 @@ def initialise(mode):
 
 if __name__ == '__main__':
     BATCHIFY = True
-    SIM = False
-    KERNEL = 'poly'
+    SIM = True
+    KERNEL = None
     BATCH_SIZE = 2000
     RANK = 10
     SKIP_STEP = 3
-    FILENAME = 'poly_maha_cov_init_train'
+    FILENAME = 'poly_simi_init_train'
     NUM_ITER = 1000
     INIT_MODES = ['cov', 'I', 'restore']
 
@@ -203,7 +203,7 @@ if __name__ == '__main__':
         init_params['L'] = initialise(INIT_MODES[0])
         lr = 0.00001
     else:
-        init_params['A'] = initialise(INIT_MODES[0])
+        init_params['A'] = initialise(INIT_MODES[1])
         lr = 0.00001
 
     # For gaussian kernel
