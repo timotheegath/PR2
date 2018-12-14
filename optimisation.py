@@ -32,28 +32,40 @@ class StopCallback():
 
 class TrainableMetric:
 
-    def __init__(self, init_params, dims, loss, lagrangian=True, kernel=None):
+    def __init__(self, init_params, dims, loss, lagrangian=True, kernel=None, similarity=False):
 
         self.kernel = kernel
 
         self.lagrangian = torch.full((1, ), 1, requires_grad=lagrangian)
         self.parameters = {}
 
-        self.parameters['L'] = torch.empty((dims, dims), requires_grad=True)
-        self.parameters['L'].data = init_params['L']
-        if kernel is 'poly':
+        if similarity is False:
+            self.parameters['L'] = torch.empty((dims, dims), requires_grad=True)
+            self.parameters['L'].data = init_params['L']
+            if kernel is 'poly':
 
-            self.parameters['p'] = torch.empty((1, ), requires_grad=True)
-            self.parameters['p'].data = init_params['p']
-            self.distance = metrics.poly_Maha
-        elif kernel is 'RBF':
+                self.parameters['p'] = torch.empty((1, ), requires_grad=True)
+                self.parameters['p'].data = init_params['p']
+                self.distance = metrics.poly_Maha
+            elif kernel is 'RBF':
 
-            self.parameters['sigma'] = torch.empty((1, ), requires_grad=True)
-            self.parameters['sigma'].data = init_params['sigma']
-            self.distance = metrics.gaussian_Maha
+                self.parameters['sigma'] = torch.empty((1, ), requires_grad=True)
+                self.parameters['sigma'].data = init_params['sigma']
+                self.distance = metrics.gaussian_Maha
+            else:
+
+                self.distance = metrics.mahalanobis_metric
+
         else:
+            self.parameters['A'] = torch.empty((dims, dims), requires_grad=True)
+            self.parameters['A'].data = init_params['A']
+            if kernel is 'poly':
+                print('Not implemented')
+            elif kernel is 'RBF':
+                print('Not implemented')
+            else:
 
-            self.distance = metrics.mahalanobis_metric
+                self.distance = metrics.BilinearSimilarity
         self.loss = loss
 
     def __call__(self, features, features_compare=None):
@@ -97,6 +109,7 @@ def lossA(distances, labels, l):
 
 def lossC(distances, labels, l):
     distances = distances - torch.diag(distances.diag())
+    distances = distances/torch.max(distances.view(-1))
     label_mask = labels.view(1, -1) == labels.view(-1, 1)
     constraint = torch.zeros((1,))
     chosen_rows = np.arange(0, distances.shape[0])
