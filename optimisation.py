@@ -110,7 +110,7 @@ def lossA(distances, labels, l):
 
 def lossC(distances, labels, l):
     distances = distances - torch.diag(distances.diag())
-    distances = distances/torch.max(distances.view(-1))
+    # distances = distances/torch.max(distances.view(-1))
     label_mask = labels.view(1, -1) == labels.view(-1, 1)
     constraint = torch.zeros((1,))
     chosen_rows = np.arange(0, distances.shape[0])
@@ -197,7 +197,7 @@ if __name__ == '__main__':
         lr = 0.0000001
     else:
         init_params['A'] = initialise(INIT_MODES[1])
-        lr = 0.0000001
+        lr = 0.00001
 
     # For gaussian kernel
     if KERNEL is 'RBF':
@@ -215,7 +215,7 @@ if __name__ == '__main__':
 
     Metric = TrainableMetric(init_params, features.shape[0], lossC, lagrangian=True, kernel=KERNEL, similarity=SIM)
 
-    optimizers = torch.optim.ASGD(Metric.get_params(lr), lr=lr)
+    optimizers = torch.optim.ASGD(Metric.get_params(), lr=lr)
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp')
     param_recorder = io.ParameterSaver(*Metric.parameters.keys())
 
