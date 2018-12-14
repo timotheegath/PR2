@@ -30,7 +30,7 @@ class StopCallback():
             pass
 
 
-class TrainableMetric():
+class TrainableMetric:
 
     def __init__(self, init_params, dims, loss, lagrangian=True, kernel=None):
 
@@ -67,7 +67,7 @@ class TrainableMetric():
 
         return loss, distances.clone().detach().cpu().numpy()
 
-    def get_params(self, lagr_lr=0):
+    def get_params(self, lagr_lr=0.00001):
 
         return [{'params': [self.parameters[k] for k in self.parameters.keys()]},
                 {'params': self.lagrangian, 'lr': lagr_lr}]
@@ -152,11 +152,11 @@ def initialise(mode):
 
 if __name__ == '__main__':
     BATCHIFY = True
-    KERNEL = 'RBF'
+    KERNEL = None
     BATCH_SIZE = 2000
     RANK = 10
     SKIP_STEP = 3
-    FILENAME = 'test_run'
+    FILENAME = 'maha_I_init_train'
     NUM_ITER = 1000
     INIT_MODES = ['cov', 'I']
 
@@ -174,20 +174,24 @@ if __name__ == '__main__':
 
     """Initialise parameters here"""
     init_params['L'] = initialise(INIT_MODES[1])
+    lr = 0.0000001
     # For gaussian kernel
     if KERNEL is 'RBF':
 
         param2 = torch.full((1,), 300)
         init_params['sigma'] = param2
+        lr = 0.001
 
     elif KERNEL is 'poly':
 
         param2 = torch.full((1,), 0.1)
         init_params['p'] = param2
+        lr = 0.001
+
 
     Metric = TrainableMetric(init_params, features.shape[0], lossC, lagrangian=True, kernel=KERNEL)
 
-    optimizers = torch.optim.ASGD(Metric.get_params(0.001), lr=0.002)
+    optimizers = torch.optim.ASGD(Metric.get_params(), lr=lr)
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp')
     param_recorder = io.ParameterSaver(*Metric.parameters.keys())
 
@@ -212,7 +216,7 @@ if __name__ == '__main__':
             optimizers.step()
             optimizers.zero_grad()
             print('Optimized')
-
+        # Test phase
         with torch.no_grad():
 
             test_distances = Metric(features[:, query_ind], features[:, gallery_ind])
