@@ -85,12 +85,13 @@ We retrieved the k-nearest neighbours of the query features with the gallery fea
 \subsection{K-means}
 
 \section{Improved approach: Kernel/Non-kernel Mahalanobis distance}
-Mahalanobis distance learning was chosen as an attempt to improve the baseline metric, by learning the feature transformation that would improve the Euclidian distance metric. This seemed sensible as Euclidian distance was already 
+Mahalanobis distance learning was chosen as an attempt to improve the baseline metric, by learning the feature transformation that would improve the Euclidean distance metric. This seemed sensible as Euclidean distance metric was second only to Minkowski metric for $p=1$, and we wanted to try and improve upon this baseline. 
 Where this distance is defined by:
 \begin{equation}
     d_A(x, y) = (x - y)^TA(x - y)
 \end{equation}
 and $A \in \mathbb{R}^{DXD}$, $A \ge 0$
+
 \subsection{Without iterative training: choosing the right A matrix}
 It was first explored what performance could be achieved by simply choosing a good A matrix and not not train it any further. Two options were compared:
 \begin{enumerate}
@@ -106,8 +107,9 @@ Their respective performance on the test dataset are displayed in figure \ref{fi
     \label{fig:maha_map}
 \end{figure}
 
-In the case $A = I$, the Malahanobis metric is the Euclidian distance as shown in figure \ref{fig:baseline_map}. In comparison, the covariance based Mahalanobis metric doesn't show promising result. One reason for that might be that the features are already strongly decorrelated, and the covariance matrix does not apply any linear transformation to the features other than scaling each feature by the inverse of its variance (only diagonal elements in the covariance matrix). 
+In the case $A = I$, the Malahanobis metric is the Euclidean distance as shown in figure \ref{fig:baseline_map}. In comparison, the covariance based Mahalanobis metric doesn't show promising result. One reason for that might be that the features are already strongly decorrelated, and the covariance matrix does not apply any linear transformation to the features other than scaling each feature by the inverse of its variance (only diagonal elements in the covariance matrix). 
 
+\subsection{Learning by constrained optimisation}
 Following this we attempted to learn the matrix A through constrained optimisation. The objective function to minimise was the following:
 
 \begin{equation}
@@ -131,9 +133,21 @@ The optimisation problem was implemented as:
 \end{equation}
 
 The first term is the sum of distances between similar points (denoted by set Ds). The second term forms the sum of randomly generated constraints parameterised by $\lambda$, as all the constraint calculations could not be held in memory during runtime. The parameters for optimisation are the elements of A, used for distance computation, and the parameter $\lambda$. The optimisation was tested on three cases; with no kernel, as well as with the Gaussian and Polynomial kernels. With kernel learning, the variance $\sigma$ and power $p$ were scalar parameters to be optimised as well. The matrix A was initialised as either training data covariance matrix or as an identity matrix. The parameters l was initialised to 1, and kernel parameters $\sigma$ and $p$ to 30 and 0.1 respectively, when needed. $\sigma$ was chosen by inspection to prevent extreme values ([0,1]) as starting values for the kernel. Similarly $p$ was chosen to prevent tendency to $\inf$ of kernel function values.
-Figure \ref{fig:comparison_init} shows the results of the three cases for two different initialisations of matrix A. We can see that the polynomial kernel does not perform well. In comparison, using no kernel or gaussian kernel yields better results, where  the gaussian kernel tends to do a bit better.
+
+Figure \ref{fig:comparison_init} shows the results of the three cases for two different initialisations of matrix A. We can see that the polynomial kernel does not perform well. In comparison, using no kernel or Gaussian kernel yields better results, where  the Gaussian kernel tends to do a bit better.
 All the mAp for the testing data was calculated by kNN retrieval for $k = 10$.
-The best result was achieved by the gaussian kernel learning when the A matrix was initialised as I.
+The best result was achieved by the Gaussian kernel learning when the A matrix was initialised as I.
+
+If we consider the cosine similarity (or biliniear similarity) as done in the section 2, we can see why the polynomial kernel might fail. As the inner product similarity measures do not yield great results, raising the inner product to a power $p$ is not the most promising way forward. The Gaussian kernel on the other hand is the exponential of Euclidean distance parameterised by $\sigma$. The maximum improvement upon the baseline was still quite low, at 1\% increase in mAp at k = 10, shown in table \ref{tab:my_label}.
+
+Figure \ref{fig:diff_matrix} and figure \ref{fig:} show the difference between the matrix A after and bfeore training. In both cases, there is no tendency to introduce any significant correlation between different features while learning, only diagonal weights show noticeable changes, where features are independently scaled. In the case where we start with the identity matrix I (only case that yields any improvement) even the diagonal terms change very little as we try to optimise our objective function. This means that all the features are already represented in the optimal domain for the Euclidean distance metric.
+
+\subsection{Alternative approaches}
+We initially considered the random uniform initialisation of matrix A. The learning process yielded only worse results to the ones displayed above and at best, the mAp at k = 10 could reach 42\%. Introducing the off diagonal elements only impeded the performance and the optimisation.
+
+We also tried a different approach when defining the constraints during the optimisation. We initialised the matrix to the identity matrix I, and optimised without the use of a kernel. Instead of taking random i at each training iteration and enforcing a different set of randomly chosen constraints, we tried a more deterministic approach. All the constraints were computed with the initial matrix $A=I$, and the constraints that were broken were found. In the following training only these constraints would be considered and recomputed at each iteration. This approach also meant that we can assign a different $\lambda$ for each constraint and implement a true Lagrangian optimisation over these constraints. This experiment yielded nearly same results as the previus method, but the algorithm converged to the achieved maximum much faster, as seen in figure \ref{fig:}
+
+
 
 \begin{figure}
 \begin{subfigure}{\linewidth}
@@ -158,6 +172,12 @@ The best result was achieved by the gaussian kernel learning when the A matrix w
     \caption{Comparison of the mAp of the euclidean distance and our improved RBF kernel Mahalanobis distance initialised with an identity matrix}
     \label{tab:my_label}
 \end{table}
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Graphs/A_matrix_diff.png}
+    \caption{Difference of the RBF kernel Mahalanobis distance matrix after and before training, initialised as an identity matrix}
+    \label{fig:diff_matrix}
+\end{figure}
 \appendices
 
 \section{Optimisation of computations}
@@ -183,6 +203,17 @@ inverse covariance matrix of the training features and decomposed by Cholesky de
     |Lx_i - Lx_j|_2^2 = \sum_{i}(Lx_i)^2 + \sum_{j}(Lx_j)^2 - 2(Lx_i)^T(Lx_j)
 \end{equation}
 The expansion on the right hand side ignores the square root operation in 2-norm computation. The square terms are first computed for all the training data points contained in the data matrix X and the last term is found as the matrix product of $X^TX$. This result gives the distance matrix of size $NxN$ where N is the number of training points. The diagonal is set to 0, as it should be when $x_i = x_j$, to stabilise the optimisation, since (due to computational precision) the summation of the first two terms slightly differs to the summation in the matrix product. 
+
+\section{Code}
+\subsection{Folder structure}
+\begin{list}
+    \item The file \textit{baseline.py} calculates the distances using all baseline metrics previously mentioned and stores their mAp results in a file.
+    \item \textit{metrics.py} contains all the aforementioned metric functions that can calculate all the pairwise distances within a feature set in one call and take in a parameter if required (Mahalanobis, bilinear similarity). 
+    \item \textit{optimisation,py} contains a class that wraps around a metric that uses a parameter and makes it trainable by defining an objective function and computing its gradient over the parameters. It contains as well the two losses that were used (first loss A and then loss C) and the main in which the metric is optimised. Within the main, you can select using the capital parameters how and which metric to optimise.
+    \item \textit{data_in_out.py} contains all functions to load, save and display data, including the rank list
+    \item \textit{kmeans.py} contains all the work done around kmeans, runs the clustering algorithm on query and gallery data and evaluates it in the end
+\end{list}
+
 
 
 \bibliographystyle{IEEEtran}
