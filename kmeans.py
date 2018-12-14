@@ -40,6 +40,26 @@ def kmeans_accuracy(query_labels, gallery_labels, cluster_labels, feature_c_labe
 # def kmeans_acc(query_features, clusters):
 
 
+def eval_kmeans(query_to_cluster, cluster_members, query_ind, gallery_ind):
+
+    query_ind, gallery_ind = query_ind.astype(np.int32), gallery_ind.astype(np.int32)
+    cam_ids = io.get_cam_ids()
+    ranked_winners = np.argsort(query_to_cluster, axis=1)[:, 0, None]  # sort from smaller to bigger
+    ranked_distances = np.sort(query_to_cluster, axis=1)[:, 0, None]
+
+
+    g_t = io.get_ground_truth()
+    score = 0
+    for i in range(ranked_winners.shape[0]):
+        ranked_gal_winners = np.argwhere(cluster_members == ranked_winners[i])
+        gallery_labels = gallery_ind[ranked_gal_winners]
+        query_label = g_t[query_ind[i]]
+        match_mask = query_label == gallery_labels
+        score += np.sum(match_mask.astype(np.int32))/match_mask.shape[0]
+    score /= ranked_winners.shape[0]
+
+
+    return score
 
 if __name__ == '__main__':
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64)
@@ -71,10 +91,9 @@ if __name__ == '__main__':
     else:
         clusters, feature_c_labels = cluster(query_labels, gallery_features)
         cluster_labels = np.arange(0, clusters.shape[1], 1)
-        query_to_cluster_dist = metrics.minkowski_metric(query_features, 2, features_compare=clusters)
+        query_to_cluster_dist = metrics.minkowski_metric(query_features, 2, features_compare=clusters) # Shape Q X clusters
 
-        distances = query_to_cluster_dist[:, feature_c_labels]
-        _, score = eval.evaluate(1, distances, query_indices, gallery_indices, clusters=True)
+        score = eval_kmeans(query_to_cluster_dist, feature_c_labels, query_indices, gallery_indices)
     print(score)
 
 

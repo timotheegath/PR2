@@ -178,13 +178,13 @@ def initialise(mode):
 if __name__ == '__main__':
     BATCHIFY = True
     SIM = True
-    KERNEL = None
+    KERNEL = [None, 'RBF', 'poly'][0]
     BATCH_SIZE = 2000
     RANK = 10
     SKIP_STEP = 3
     FILENAME = 'poly_simi_init_train'
     NUM_ITER = 1000
-    INIT_MODES = ['cov', 'I', 'restore']
+    INIT_MODES = ['cov', 'I', 'restore'][1]
 
     # Feature loading
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64).transpose()
@@ -200,10 +200,10 @@ if __name__ == '__main__':
 
     """Initialise parameters here"""
     if SIM == False:
-        init_params['L'] = initialise(INIT_MODES[0])
+        init_params['L'] = initialise(INIT_MODES)
         lr = 0.00001
     else:
-        init_params['A'] = initialise(INIT_MODES[1])
+        init_params['A'] = initialise(INIT_MODES)
         lr = 0.00001
 
     # For gaussian kernel

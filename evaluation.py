@@ -113,17 +113,17 @@ def evaluate(r, distances, query_ind, gallery_ind, clusters=False, flip=False):
     ranked_winners = gallery_ind[ranked_winners]
 
     query_labels = g_t[query_ind]
-    if not clusters:
-        ranked_labels = g_t[ranked_winners[:, :r]]
-    else:
-        ranked_labels = np.ma.masked_where(ranked_distances != ranked_distances[:, 0, None], g_t[ranked_winners])
+
+    ranked_labels = g_t[ranked_winners[:, :r]]
+
     match_mask = ranked_labels == query_labels[:, None]
-    if clusters:
-        match_mask = np.ma.masked_where(ranked_distances != ranked_distances[:, 0, None], match_mask)
+
     query_correct = np.cumsum(match_mask.astype(np.uint8), axis=1)
 
     num_of_correct = np.max(query_correct, axis=1)
+
     seen_imgs = np.arange(1, r + 1)
+
     seen_imgs = 1 / seen_imgs
 
     score_mask = np.copy(query_correct)
@@ -134,4 +134,5 @@ def evaluate(r, distances, query_ind, gallery_ind, clusters=False, flip=False):
     total_score = np.sum(query_scores) / query_scores.shape
 
     return ranked_winners, total_score
+
 
