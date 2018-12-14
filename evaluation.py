@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from Old import data_in_out as io
+import data_in_out as io
 
 if torch.cuda.is_available():
     Tensor = torch.cuda.FloatTensor

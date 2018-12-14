@@ -135,6 +135,18 @@ def create_batch(features, g_t,  train_index, size):
 
     return to_torch(training_features, training_labels, train_ix)
 
+def initialise(mode):
+
+    if mode is 'I':
+        matrix = torch.eye(features.shape[0])
+    elif mode is 'cov':
+        matrix = torch.empty((features.shape[0], features.shape[0]), requires_grad=True)
+
+        matrix.data = (
+            torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(
+                Tensor))
+    return matrix
+
 
 if __name__ == '__main__':
     BATCHIFY = True
@@ -144,6 +156,7 @@ if __name__ == '__main__':
     SKIP_STEP = 3
     FILENAME = 'test_run'
     NUM_ITER = 1000
+    INIT_MODES = ['cov', 'I']
 
     # Feature loading
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64).transpose()
@@ -158,24 +171,15 @@ if __name__ == '__main__':
     init_params = {}
 
     """Initialise parameters here"""
-
-    matrix = torch.eye(features.shape[0])
-    matrix.data = torch.from_numpy(np.linalg.cholesky(np.eye(features.shape[0]))).type(Tensor)
-    # matrix = torch.rand((features.shape[0], features.shape[0]), requires_grad=True)
-
-    # matrix.data = (torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(Tensor))
-    # matrix = torch.eye(features.shape[0], requires_grad=True)
-    # matrix.data = torch.tril(matrix)
-
-    init_params['L'] = matrix
+    init_params['L'] = initialise(INIT_MODES[1])
     # For gaussian kernel
     if KERNEL is 'RBF':
 
-        param2 = torch.rand((1,))
-        param2.data = torch.full((1,), 300)
+        param2 = torch.full((1,), 300)
         init_params['sigma'] = param2
 
     elif KERNEL is 'poly':
+        
         param2 = torch.full((1,), 0.1)
         init_params['p'] = param2
 
