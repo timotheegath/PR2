@@ -42,6 +42,7 @@ class TrainableMetric():
         self.parameters['L'] = torch.empty((dims, dims), requires_grad=True)
         self.parameters['L'].data = init_params['L']
         if kernel is 'poly':
+
             self.parameters['p'] = torch.empty((1, ), requires_grad=True)
             self.parameters['p'].data = init_params['p']
             self.distance = metrics.poly_Maha
@@ -51,6 +52,7 @@ class TrainableMetric():
             self.parameters['sigma'].data = init_params['sigma']
             self.distance = metrics.gaussian_Maha
         else:
+
             self.distance = metrics.mahalanobis_metric
         self.loss = loss
 
