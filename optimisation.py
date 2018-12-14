@@ -109,8 +109,12 @@ def lossA(distances, labels, l):
 
 
 def lossC(distances, labels, l):
+    if KERNEL is not None:
+        margin = 0.1
+    else:
+        margin = 1
     distances = distances - torch.diag(distances.diag())
-    # distances = distances/torch.max(distances.view(-1))
+    distances = distances/torch.max(distances.view(-1))*10
     label_mask = labels.view(1, -1) == labels.view(-1, 1)
     constraint = torch.zeros((1,))
     chosen_rows = np.arange(0, distances.shape[0])
@@ -118,16 +122,17 @@ def lossC(distances, labels, l):
     chosen_rows = chosen_rows[:min(100, distances.shape[0])].tolist()
     for i in chosen_rows:
 
-        same_label_candidates = torch.masked_select(distances[i, :],  label_mask[i, :])
-        different_label_candidates = torch.masked_select(distances[i, :],  1 - label_mask[i, :])
-        pair = same_label_candidates[:, None] - different_label_candidates[None, :]
+        same_label_candidates = torch.masked_select(distances[i, :i],  label_mask[i, :i])
+        different_label_candidates = torch.masked_select(distances[i, :i],  1 - label_mask[i, :i])
+        if not ((same_label_candidates.shape[0] == 0) or (different_label_candidates.shape[0] == 0)) :
+            pair = torch.tril(same_label_candidates[:, None] - different_label_candidates[None, :] - margin)
 
-        try:
-            # pair = different_label_candidates[0] - same_label_candidates[0]
-            constraint += torch.sum(pair - 1)
-        except IndexError:
+            try:
 
-            pass
+                constraint += torch.sum(pair)
+            except IndexError:
+
+                pass
 
     # Transform maximisation into minimisation
 
@@ -161,7 +166,7 @@ def initialise(mode):
         param = torch.empty((features.shape[0], features.shape[0]), requires_grad=True)
 
         param.data = (
-            torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(
+            torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.corrcoef(features[:, train_ind]))).transpose()).type(
                 Tensor))
     elif mode is 'restore':
         param = loadmat('Results/' + FILENAME + '_param_')['L'][0]
@@ -173,11 +178,11 @@ def initialise(mode):
 if __name__ == '__main__':
     BATCHIFY = True
     SIM = False
-    KERNEL = 'poly'
+    KERNEL = 'RBF'
     BATCH_SIZE = 2000
     RANK = 10
     SKIP_STEP = 3
-    FILENAME = 'poly_maha_I_init_train'
+    FILENAME = 'RBF_maha_cov_init_train'
     NUM_ITER = 1000
     INIT_MODES = ['cov', 'I', 'restore']
 
@@ -195,18 +200,18 @@ if __name__ == '__main__':
 
     """Initialise parameters here"""
     if SIM == False:
-        init_params['L'] = initialise(INIT_MODES[1])
-        lr = 0.0000001
+        init_params['L'] = initialise(INIT_MODES[0])
+        lr = 0.00001
     else:
-        init_params['A'] = initialise(INIT_MODES[1])
+        init_params['A'] = initialise(INIT_MODES[0])
         lr = 0.00001
 
     # For gaussian kernel
     if KERNEL is 'RBF':
 
-        param2 = torch.full((1,), 300)
+        param2 = torch.full((1,), 30)
         init_params['sigma'] = param2
-        lr = 0.001
+        lr = 0.0001
 
     elif KERNEL is 'poly':
 
