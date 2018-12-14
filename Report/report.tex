@@ -138,17 +138,6 @@ Figure \ref{fig:comparison_init} shows the results of the three cases for two di
 All the mAp for the testing data was calculated by kNN retrieval for $k = 10$.
 The best result was achieved by the Gaussian kernel learning when the A matrix was initialised as I.
 
-If we consider the cosine similarity (or biliniear similarity) as done in the section 2, we can see why the polynomial kernel might fail. As the inner product similarity measures do not yield great results, raising the inner product to a power $p$ is not the most promising way forward. The Gaussian kernel on the other hand is the exponential of Euclidean distance parameterised by $\sigma$. The maximum improvement upon the baseline was still quite low, at 1\% increase in mAp at k = 10, shown in table \ref{tab:my_label}.
-
-Figure \ref{fig:diff_matrix} and figure \ref{fig:} show the difference between the matrix A after and bfeore training. In both cases, there is no tendency to introduce any significant correlation between different features while learning, only diagonal weights show noticeable changes, where features are independently scaled. In the case where we start with the identity matrix I (only case that yields any improvement) even the diagonal terms change very little as we try to optimise our objective function. This means that all the features are already represented in the optimal domain for the Euclidean distance metric.
-
-\subsection{Alternative approaches}
-We initially considered the random uniform initialisation of matrix A. The learning process yielded only worse results to the ones displayed above and at best, the mAp at k = 10 could reach 42\%. Introducing the off diagonal elements only impeded the performance and the optimisation.
-
-We also tried a different approach when defining the constraints during the optimisation. We initialised the matrix to the identity matrix I, and optimised without the use of a kernel. Instead of taking random i at each training iteration and enforcing a different set of randomly chosen constraints, we tried a more deterministic approach. All the constraints were computed with the initial matrix $A=I$, and the constraints that were broken were found. In the following training only these constraints would be considered and recomputed at each iteration. This approach also meant that we can assign a different $\lambda$ for each constraint and implement a true Lagrangian optimisation over these constraints. This experiment yielded nearly same results as the previus method, but the algorithm converged to the achieved maximum much faster, as seen in figure \ref{fig:}
-
-
-
 \begin{figure}
 \begin{subfigure}{\linewidth}
     \centering
@@ -163,6 +152,18 @@ We also tried a different approach when defining the constraints during the opti
 \caption{Evolution of mAp with the number of optimisation iterations, for the Mahalanobis distance initialised with the identity matrix (top) and the covariance matrix (bottom). The variants with no kernel, RBF kernel and polynomial kernel are shown.}
 \label{fig:comparison_init}
 \end{figure}
+
+Figure \ref{fig:diff_matrix} show the difference between the matrix A after and bfeore training. In both cases, there is no tendency to introduce any significant correlation between different features while learning, only diagonal weights show noticeable changes, where features are independently scaled. In the case where we start with the identity matrix I (only case that yields any improvement) even the diagonal terms change very little as we try to optimise our objective function. This means that all the features are already represented in the optimal domain for the Euclidean distance metric.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Graphs/A_matrix_diff.png}
+    \caption{Difference of the RBF kernel Mahalanobis distance matrix after and before training, initialised as an identity matrix}
+    \label{fig:diff_matrix}
+\end{figure}
+
+If we consider the cosine similarity (or biliniear similarity) as done in the section 2, we can see why the polynomial kernel might fail. As the inner product similarity measures do not yield great results, raising the inner product to a power $p$ is not the most promising way forward. The Gaussian kernel on the other hand is the exponential of Euclidean distance parameterised by $\sigma$. The maximum improvement upon the baseline was still quite low, at 1\% increase in mAp at k = 10, shown in table \ref{tab:my_label}.
+
 \begin{table}
     \centering
     \begin{tabular}{c|c}
@@ -172,12 +173,23 @@ We also tried a different approach when defining the constraints during the opti
     \caption{Comparison of the mAp of the euclidean distance and our improved RBF kernel Mahalanobis distance initialised with an identity matrix}
     \label{tab:my_label}
 \end{table}
+
+
+
+\subsection{Alternative approaches}
+We initially considered the random uniform initialisation of matrix A. The learning process yielded only worse results to the ones displayed above and at best, the mAp at k = 10 could reach 42\%. Introducing the off diagonal elements only impeded the performance and the optimisation.
+
+We also tried a different approach when defining the constraints during the optimisation. We initialised the matrix to the identity matrix I, and optimised without the use of a kernel. Instead of taking random i at each training iteration and enforcing a different set of randomly chosen constraints, we tried a more deterministic approach. All the constraints were computed with the initial matrix $A=I$, and the constraints that were broken were found. In the following training only these constraints would be considered and recomputed at each iteration. This approach also meant that we can assign a different $\lambda$ for each constraint and implement a true Lagrangian optimisation over these constraints. This experiment yielded nearly same results as the previous method, but the algorithm converged to the achieved maximum much faster, as seen in figure \ref{fig:Lag_optim}.
+
 \begin{figure}
     \centering
-    \includegraphics[width=\linewidth]{Graphs/A_matrix_diff.png}
-    \caption{Difference of the RBF kernel Mahalanobis distance matrix after and before training, initialised as an identity matrix}
-    \label{fig:diff_matrix}
+    \includegraphics[width=\linewidth]{Graphs/no_kernel_Maha_I_newloss.png}
+    \caption{Evolution of mAp with the number of optimisation iterations, using the Lagrangian optimisation and selected constraints}
+    \label{fig:Lag_optim}
 \end{figure}
+
+Finally, we also considered learning the Bilinear similarity matrix, and using Bilinear similarity as the distance metric. 
+
 \appendices
 
 \section{Optimisation of computations}
@@ -206,13 +218,26 @@ The expansion on the right hand side ignores the square root operation in 2-norm
 
 \section{Code}
 \subsection{Folder structure}
-\begin{list}
+
+\begin{itemize}
     \item The file \textit{baseline.py} calculates the distances using all baseline metrics previously mentioned and stores their mAp results in a file.
     \item \textit{metrics.py} contains all the aforementioned metric functions that can calculate all the pairwise distances within a feature set in one call and take in a parameter if required (Mahalanobis, bilinear similarity). 
-    \item \textit{optimisation,py} contains a class that wraps around a metric that uses a parameter and makes it trainable by defining an objective function and computing its gradient over the parameters. It contains as well the two losses that were used (first loss A and then loss C) and the main in which the metric is optimised. Within the main, you can select using the capital parameters how and which metric to optimise.
-    \item \textit{data_in_out.py} contains all functions to load, save and display data, including the rank list
-    \item \textit{kmeans.py} contains all the work done around kmeans, runs the clustering algorithm on query and gallery data and evaluates it in the end
-\end{list}
+    \item \textit{optimisation.py} contains a class that wraps around a metric that uses a parameter and makes it trainable by defining an objective function and computing its gradient over the parameters. It contains as well the two losses that were used (first loss A and then loss C) and the main in which the metric is optimised. Within the main, you can select using the capital parameters how and which metric to optimise.
+
+    \item \textit{data\_in\_out.py} contains all functions to load, save and display data, including the rank list
+    \item \textit{kmeans.py} contains all the work done around kmeans, runs the clustering algorithm on query and gallery data and evaluates it in the end. The evaluation metric is not functional presently
+    \item \textit{new\_optim.py} contains the work done to implement a new aforementioned loss (alternative approaches). It is not functional presently
+\end{itemize}
+\subsection{Optimising}
+\begin{itemize}
+    \item BATCHIFY, if set to True, runs the optimisation in batches specified in BATCH\_SIZE.
+    \item KERNEL is the chosen kernel for the metric. Currently, all kernels are implemented for Mahalanobis, but no kernel is implemented for Bilinear Similarity
+    \item RANK specifies the rank at which to calculate mAp
+    \item SKIP\_STEP specifies how many times the objective funciton should be calculated and averaged before optimising. If BATCHIFY is True, the features used will be randomised
+    \item FILENAME will specify the filename, imperative to change it to not overwrite previous data
+    \item NUM\_ITER specifies the maximum number of iterations before stopping the algorithm
+    \item INIT\_MODES specifies how the parameters should be initialised.'restore' will try to restore previously saved parameters
+\end{itemize}
 
 
 
