@@ -153,13 +153,20 @@ The best result was achieved by the Gaussian kernel learning when the A matrix w
 \label{fig:comparison_init}
 \end{figure}
 
-Figure \ref{fig:diff_matrix} show the difference between the matrix A after and bfeore training. In both cases, there is no tendency to introduce any significant correlation between different features while learning, only diagonal weights show noticeable changes, where features are independently scaled. In the case where we start with the identity matrix I (only case that yields any improvement) even the diagonal terms change very little as we try to optimise our objective function. This means that all the features are already represented in the optimal domain for the Euclidean distance metric.
+Figure \ref{fig:diff_matrix} and figure \ref{fig:diff_matrix_cov} show the difference between the matrix A (using Gaussian kernel) after and befeore training, for the two different initialisations of A. In both cases, there is no tendency to introduce any significant correlation between different features while learning, only diagonal weights show noticeable changes, where features are independently scaled. In the case where we start with the identity matrix I (only case that yields any improvement) even the diagonal terms change very little as we try to optimise our objective function. This means that all the features are already represented in the optimal domain for the Euclidean distance metric.
 
 \begin{figure}
     \centering
     \includegraphics[width=\linewidth]{Graphs/A_matrix_diff.png}
     \caption{Difference of the RBF kernel Mahalanobis distance matrix after and before training, initialised as an identity matrix}
     \label{fig:diff_matrix}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Graphs/A_matrix_diff_cov.png}
+    \caption{Difference of the RBF kernel Mahalanobis distance matrix after and before training, initialised as a covariance matrix}
+    \label{fig:diff_matrix_cov}
 \end{figure}
 
 If we consider the cosine similarity (or biliniear similarity) as done in the section 2, we can see why the polynomial kernel might fail. As the inner product similarity measures do not yield great results, raising the inner product to a power $p$ is not the most promising way forward. The Gaussian kernel on the other hand is the exponential of Euclidean distance parameterised by $\sigma$. The maximum improvement upon the baseline was still quite low, at 1\% increase in mAp at k = 10, shown in table \ref{tab:my_label}.
@@ -179,7 +186,7 @@ If we consider the cosine similarity (or biliniear similarity) as done in the se
 \subsection{Alternative approaches}
 We initially considered the random uniform initialisation of matrix A. The learning process yielded only worse results to the ones displayed above and at best, the mAp at k = 10 could reach 42\%. Introducing the off diagonal elements only impeded the performance and the optimisation.
 
-We also tried a different approach when defining the constraints during the optimisation. We initialised the matrix to the identity matrix I, and optimised without the use of a kernel. Instead of taking random i at each training iteration and enforcing a different set of randomly chosen constraints, we tried a more deterministic approach. All the constraints were computed with the initial matrix $A=I$, and the constraints that were broken were found. In the following training only these constraints would be considered and recomputed at each iteration. This approach also meant that we can assign a different $\lambda$ for each constraint and implement a true Lagrangian optimisation over these constraints. This experiment yielded nearly same results as the previous method, but the algorithm converged to the achieved maximum much faster, as seen in figure \ref{fig:Lag_optim}.
+We also tried a different approach when defining the constraints during the optimisation. We initialised the matrix to the identity matrix I, and optimised without the use of a kernel. Instead of taking random i at each training iteration and enforcing a different set of randomly chosen constraints, we tried a more deterministic approach. All the constraints were computed with the initial matrix $A=I$, and the constraints that were broken were found. In the following training only these constraints would be considered and recomputed at each iteration. This approach also meant that we can assign a different $\lambda$ for each constraint and implement a true Lagrangian optimisation over these constraints. This experiment yielded nearly same results as the previous method, but the algorithm converged to the achieved maximum much faster, as seen in figure \ref{fig:Lag_optim}. Due to a lack of computational power, it was impossible to implement this approach with kernels.
 
 \begin{figure}
     \centering
@@ -188,7 +195,9 @@ We also tried a different approach when defining the constraints during the opti
     \label{fig:Lag_optim}
 \end{figure}
 
-Finally, we also considered learning the Bilinear similarity matrix, and using Bilinear similarity as the distance metric. 
+Finally, we also considered learning the Bilinear similarity matrix, and using Bilinear similarity as the distance metric. We used the same loss and constraints as described in section B. It was not possible to learn the feature transform that would make the Bilinear similarity metric effective, shown in figure \ref{fig:}.
+
+
 
 \appendices
 
