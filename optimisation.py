@@ -1,5 +1,6 @@
 import numpy as np
 import data_in_out as io
+from scipy.io import loadmat
 import evaluation as eval
 import torch
 import metrics as metrics
@@ -138,14 +139,18 @@ def create_batch(features, g_t,  train_index, size):
 def initialise(mode):
 
     if mode is 'I':
-        matrix = torch.eye(features.shape[0])
+        param = torch.eye(features.shape[0])
     elif mode is 'cov':
-        matrix = torch.empty((features.shape[0], features.shape[0]), requires_grad=True)
+        param = torch.empty((features.shape[0], features.shape[0]), requires_grad=True)
 
-        matrix.data = (
+        param.data = (
             torch.from_numpy(np.linalg.cholesky(np.linalg.inv(np.cov(features[:, train_ind]))).transpose()).type(
                 Tensor))
-    return matrix
+    elif mode is 'restore':
+        param = loadmat('Results/' + FILENAME + '_param_')['L'][0]
+
+        param = to_torch(param)
+    return param
 
 
 if __name__ == '__main__':
@@ -156,7 +161,7 @@ if __name__ == '__main__':
     SKIP_STEP = 3
     FILENAME = 'maha_I_init_train'
     NUM_ITER = 1000
-    INIT_MODES = ['cov', 'I']
+    INIT_MODES = ['cov', 'I', 'restore']
 
     # Feature loading
     features = np.memmap('PR_data/features', mode='r', shape=(14096, 2048), dtype=np.float64).transpose()
@@ -171,8 +176,8 @@ if __name__ == '__main__':
     init_params = {}
 
     """Initialise parameters here"""
-    init_params['L'] = initialise(INIT_MODES[1])
-    lr = 0.0000001
+    init_params['L'] = initialise(INIT_MODES[2])
+    lr = 0.00000001
     # For gaussian kernel
     if KERNEL is 'RBF':
 
@@ -189,7 +194,7 @@ if __name__ == '__main__':
 
     Metric = TrainableMetric(init_params, features.shape[0], lossC, lagrangian=True, kernel=KERNEL)
 
-    optimizers = torch.optim.ASGD(Metric.get_params(), lr=lr)
+    optimizers = torch.optim.ASGD(Metric.get_params(lr), lr=lr)
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp')
     param_recorder = io.ParameterSaver(*Metric.parameters.keys())
 
