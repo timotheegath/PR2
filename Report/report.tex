@@ -105,7 +105,7 @@ Their respective performance on the test dataset are displayed in figure \ref{fi
     \label{fig:maha_map}
 \end{figure}
 
-In the case $A = I$, the Malahanobis metric is the Euclidian distance as shown in the previous figure (\ref{fig:baseline_map}). In comparison, the covariance based Mahalanobis metric doesn't show promising result. One reason for that might be that the features are already strongly decorrelated, and the covariance matrix does not apply any linear transformation to the features other than scaling each feature by the inverse of its variance (only diagonal elements in the covariance matrix). 
+In the case $A = I$, the Malahanobis metric is the Euclidian distance as shown in figure \ref{fig:baseline_map}. In comparison, the covariance based Mahalanobis metric doesn't show promising result. One reason for that might be that the features are already strongly decorrelated, and the covariance matrix does not apply any linear transformation to the features other than scaling each feature by the inverse of its variance (only diagonal elements in the covariance matrix). 
 
 Following this we attempted to learn the matrix A through constrained optimisation. The objective function to minimise was the following:
 
@@ -123,12 +123,14 @@ s.t.
 The optimisation problem was implemented as: 
 \begin{equation}
     \begin{aligned}
-    loss = \sum_{d_A \in D_s}d_A - |\lambda|C \\
+    \min_{J,\lambda} L \\
+    L(A, \lambda)  = \sum_{d_A \in D_s}d_A - |\lambda|C \\
         C = \sum_{}d_A{(x_i, x_k)} - d_A (x_i, x_j) -1,  \forall(x_j, x_k)  \\ \text{at 100 randomly chosen i}
     \end{aligned}
 \end{equation}
 
-The first term is the sum of distances between similar points (denoted by set Ds). The second term forms the sum of randomly generated constraints parameterised by l, as all the constraint calculations could not be held in memory during runtime. The parameters for optimisation are the elements of A, used for distance computation, and the parameter l. The optimisation was tested with no kernel, as well as with the Gaussian and Polynimial kernels. With kernel learning, the variance $\sigma$ and power $p$ were scalar parameters to be optimised as well. The matrix A was initialised as either training data covariance matrix or as an identity matrix. The parameters l was initialised to 1, and kernel parameters $\sigma$ and $p$ to 30 and 0.1 respectively, when needed. The kernel parameter values were c
+The first term is the sum of distances between similar points (denoted by set Ds). The second term forms the sum of randomly generated constraints parameterised by $\lambda$, as all the constraint calculations could not be held in memory during runtime. The parameters for optimisation are the elements of A, used for distance computation, and the parameter $\lambda$. The optimisation was tested on three cases; with no kernel, as well as with the Gaussian and Polynomial kernels. With kernel learning, the variance $\sigma$ and power $p$ were scalar parameters to be optimised as well. The matrix A was initialised as either training data covariance matrix or as an identity matrix. The parameters l was initialised to 1, and kernel parameters $\sigma$ and $p$ to 30 and 0.1 respectively, when needed. $\sigma$ was chosen by inspection to prevent extreme values ([0,1]) as starting values for the kernel. Similarly $p$ was chosen to prevent tendency to $\inf$ of kernel function values.
+Figures \ref{fig:comparison_I_init} and \ref{fig:} show the results of the three cases for two different initialisations of matrix A.
 
 \begin{figure}
     \centering
