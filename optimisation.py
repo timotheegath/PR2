@@ -165,6 +165,7 @@ def initialise(mode):
 
 if __name__ == '__main__':
     BATCHIFY = True
+    SIM = True
     KERNEL = None
     BATCH_SIZE = 2000
     RANK = 10
@@ -186,8 +187,13 @@ if __name__ == '__main__':
     init_params = {}
 
     """Initialise parameters here"""
-    init_params['L'] = initialise(INIT_MODES[1])
-    lr = 0.0000001
+    if SIM == False:
+        init_params['L'] = initialise(INIT_MODES[1])
+        lr = 0.0000001
+    else:
+        init_params['A'] = initialise(INIT_MODES[1])
+        lr = 0.0000001
+
     # For gaussian kernel
     if KERNEL is 'RBF':
 
@@ -202,7 +208,7 @@ if __name__ == '__main__':
         lr = 0.001
 
 
-    Metric = TrainableMetric(init_params, features.shape[0], lossC, lagrangian=True, kernel=KERNEL)
+    Metric = TrainableMetric(init_params, features.shape[0], lossC, lagrangian=True, kernel=KERNEL, similarity=SIM)
 
     optimizers = torch.optim.ASGD(Metric.get_params(), lr=lr)
     recorder = io.Recorder('loss', 'test_mAp', 'train_mAp')

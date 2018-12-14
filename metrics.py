@@ -35,7 +35,10 @@ def compute_vector_terms(features, features_compare=None):
 
     return features_norm, features_compare_norm, features_mm
 
+
 """TRAINABLE metrics"""
+
+
 def mahalanobis_metric(parameters, features, features_compare=None):
 
     L = torch.triu(parameters['L'])
@@ -55,6 +58,7 @@ def mahalanobis_metric(parameters, features, features_compare=None):
         distances = distances - torch.diag(distances.diag())
 
     return distances.transpose(1, 0)
+
 
 def gaussian_Maha(parameters, features, features_compare=None):
     L = torch.triu(parameters['L'])
@@ -101,38 +105,33 @@ def poly_Maha(parameters, features, features_compare=None):
 
 """Non-trainable metrics"""
 
-class BilinearSimilarity():
+def BilinearSimilarity(parameters, features, features_compare=None):
 
-    def __init__(self, bilinear_matrix, cosine=True):
+    A, features, features_compare = to_torch(parameters['A'], features, features_compare)
+    if features_compare is None:
+        features_compare = features
 
-        bilinear_matrix = to_torch(bilinear_matrix)
+    similarity = torch.mm(torch.mm(features.transpose(1, 0), A), features_compare)
+    distances = 1 - (similarity/torch.max(similarity.view(-1)))
+    return distances
 
-        if bilinear_matrix.dtype != Tensor.dtype:
-            bilinear_matrix = bilinear_matrix.type(Tensor)
-        self.bilinear_matrix = bilinear_matrix
-        self.cosine = cosine
+def cosine_similarity(features, features_compare=None):
 
-    def __call__(self, x, y):
-        if isinstance(x, np.ndarray):
-            x = torch.from_numpy(x).type(Tensor)
-            y = torch.from_numpy(y).type(Tensor)
+    if isinstance(features, np.ndarray):
+        features = torch.from_numpy(features).type(Tensor)
+    if isinstance(features_compare, np.ndarray):
+        features_compare = torch.from_numpy(features_compare).type(Tensor)
 
-        if x.dtype != Tensor.dtype:
-            x = x.type(Tensor)
-            y = y.type(Tensor)
-        if x.dim() == 1:
-            x = x.unsqueeze(1)
-            y = y.unsqueeze(1)
-        if self.cosine:
-            Kcos = torch.mm(x.transpose(1, 0), y)
-            x_norm = torch.norm(x, 2, dim=1, keepdim=True)
-            y_norm = torch.norm(y, 2, dim=1, keepdim=True)
-            cross_norm_matrix = torch.mm(x_norm.transpose(1, 0), y_norm)
-            Kcos /= cross_norm_matrix
-            return Kcos
-        else:
-            Km = torch.mm(torch.mm(x.transpose(1, 0), self.bilinear_matrix), y)
-            return Km
+    if features_compare is None:
+        features_compare = features
+
+    Kcos = torch.mm(features.transpose(1, 0), features_compare)
+    features_norm = torch.norm(features, 2, dim=1, keepdim=True)
+    features_compare_norm = torch.norm(features_compare, 2, dim=1, keepdim=True)
+    cross_norm_matrix = torch.mm(features_norm.transpose(1, 0), features_compare_norm)
+    distances = Kcos/cross_norm_matrix
+
+    return 1 - distances/torch.max(distances.view(-1))
 
 
 def cross_correlation(features, features_compare=None):
